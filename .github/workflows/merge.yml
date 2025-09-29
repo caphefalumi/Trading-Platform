@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main  # Trigger only when main is updated
-
+permissions:
+  contents: write
 jobs:
   sync-branches:
     runs-on: ubuntu-latest

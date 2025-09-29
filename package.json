@@ -1,18 +1,20 @@
 {
   "name": "trading-platform",
+  "version": "0.0.1",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "setup": "bun install && concurrently \"cd client && bun install\" \"cd server && bun install\"",
+    "dev": "cd client && bun run dev",
+    "server": "cd server && bun run server",
+    "bundle": "concurrently \"cd client && bun run build\" \"cd server && bun run bundle\"",
+    "preview": "cd client && bun run preview",
+    "format": "prettier --write \"client/**/*.{js,ts,vue,json,md}\" \"server/**/*.{js,ts,json}\"",
+    "start:all": "concurrently \"bun run dev\" \"bun run server\"",
+    "app": "concurrently \"bun run dev\" \"bun run server\""
   },
   "dependencies": {
-    "vue": "^3.5.21"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.1",
-    "vite": "^7.1.7"
+    "concurrently": "^9.2.0",
+    "prettier": "^3.6.2"
   }
 }

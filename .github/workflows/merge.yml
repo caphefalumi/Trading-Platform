@@ -1,9 +1,7 @@
 name: Sync main to dev branches
 
 on:
-  push:
-    branches:
-      - main  # Trigger only when main is updated
+  workflow_dispatch: 
 permissions:
   contents: write
 jobs:

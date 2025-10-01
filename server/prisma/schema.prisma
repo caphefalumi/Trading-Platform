@@ -1,0 +1,107 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id         String    @id @default(uuid())
+  username   String
+  email      String    @unique
+  password   String
+  provider   Provider
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  sessions   Session[]
+  cashHoldings CashHolding[]
+  orders     Order[]
+  tradeHistories TradeHistory[]
+  portfolios Portfolio[]
+}
+
+enum Provider {
+  local
+  google
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model CashHolding {
+  id         String   @id @default(uuid())
+  account   Account  @relation(fields: [accountId], references: [id])
+  accountId String
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  portfolio Portfolio? @relation(fields: [portfolioId], references: [id])
+  portfolioId String?
+}
+
+model Order {
+  id         String   @id @default(uuid())
+  account   Account  @relation(fields: [accountId], references: [id])
+  accountId String
+  type      OrderType
+  status    OrderStatus
+  amount    Float
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  buyTrades Trade[]  @relation("BuyOrder")
+  sellTrades Trade[] @relation("SellOrder")
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  MATCHED
+  EXECUTED
+  REJECTED
+}
+
+model Trade {
+  id         String   @id @default(uuid())
+  buyOrder   Order   @relation("BuyOrder", fields: [buyOrderId], references: [id])
+  buyOrderId String
+  sellOrder  Order   @relation("SellOrder", fields: [sellOrderId], references: [id])
+  sellOrderId String
+  amount     Float
+  price      Float
+  executedAt DateTime @default(now())
+  tradeHistories TradeHistory[]
+}
+
+model TradeHistory {
+  id        String   @id @default(uuid())
+  trade     Trade   @relation(fields: [tradeId], references: [id])
+  tradeId   String
+  account   Account @relation(fields: [accountId], references: [id])
+  accountId String
+  portfolio Portfolio? @relation(fields: [portfolioId], references: [id])
+  portfolioId String?
+  createdAt DateTime @default(now())
+}
+
+model Portfolio {
+  id        String   @id @default(uuid())
+  account   Account @relation(fields: [accountId], references: [id])
+  accountId String  @unique
+  holdings  CashHolding[]
+  trades    TradeHistory[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

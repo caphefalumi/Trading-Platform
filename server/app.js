@@ -3,10 +3,8 @@ dotenv.config({ silent: true })
 import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import ExpressMongoSanitize from 'express-mongo-sanitize'
-import mongoose from 'mongoose'
+import authRoutes from './routes/auth.js'
 const app = express()
-app.use(requestIp.mw())
 app.use(
   cors({
     origin: [
@@ -17,37 +15,14 @@ app.use(
     credentials: true,
   }),
 )
-connectDB()
 
-app.use((req, _res, next) => {
-  Object.defineProperty(req, 'query', {
-    ...Object.getOwnPropertyDescriptor(req, 'query'),
-    value: req.query,
-    writable: true,
-  })
-
-  next()
-})
-app.use(ExpressMongoSanitize())
-app.use((req, _res, next) => {
-  Object.defineProperty(req, 'query', {
-    ...Object.getOwnPropertyDescriptor(req, 'query'),
-    value: req.query,
-    writable: false,
-  })
-
-  next()
-})
 // Increase payload size limit for image uploads
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(cookieParser())
-app.use(routes)
+app.use('/', authRoutes)
 
 const PORT = process.env.PORT || 3001
-
-// Start token cleanup scheduler
-await mongoose.connect(process.env.DB_CONNECTION_STRING)
 
 // For local development
 app.listen(PORT, () => {

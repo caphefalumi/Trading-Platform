@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { uuidv7 } from 'uuidv7'
 
 const prisma = new PrismaClient()
 

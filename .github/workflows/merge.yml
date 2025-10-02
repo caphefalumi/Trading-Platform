@@ -2,8 +2,9 @@ name: Sync main to dev branches
 
 on:
   workflow_dispatch: 
-  pushes:
-    main:
+  push:
+    branches:
+      - main
 permissions:
   contents: write
 jobs:

@@ -7,7 +7,8 @@
   "scripts": {
     "bundle": "bun build app.js --outdir=dist --target=node --minify",
     "server": "bun --hot --no-clear-screen app.js",
-    "preview": "bun app.js"
+    "preview": "bun app.js",
+    "test": "bun test"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

@@ -1,87 +1,3 @@
-<script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import apiClient from '../utils/api'
-
-const router = useRouter()
-
-const form = reactive({ 
-  email: '', 
-  accountName: '', 
-  password: '' 
-})
-
-const loading = ref(false)
-const feedback = reactive({ 
-  success: '', 
-  error: '' 
-})
-
-const errors = reactive({
-  email: '',
-  accountName: '',
-  password: ''
-})
-
-// Email validation rules
-const emailRules = [
-  (v) => !!v || 'Email is required',
-  (v) => /.+@.+\..+/.test(v) || 'Email must be valid',
-]
-
-// Account name validation rules
-const accountNameRules = [
-  (v) => !!v || 'Account name is required',
-  (v) => (v && v.length >= 2) || 'Account name must be at least 2 characters',
-]
-
-// Password validation rules
-const passwordRules = [
-  (v) => !!v || 'Password is required',
-  (v) => (v && v.length >= 8) || 'Password must be at least 8 characters',
-]
-
-const clearErrors = () => {
-  errors.email = ''
-  errors.accountName = ''
-  errors.password = ''
-}
-
-const handleRegister = async () => {
-  clearErrors()
-  feedback.success = ''
-  feedback.error = ''
-  
-  loading.value = true
-  try {
-    const response = await apiClient.post('/api/auth/register', form)
-    feedback.success = response.data.success || 'Registration successful!'
-    
-    // Clear form
-    form.email = ''
-    form.accountName = ''
-    form.password = ''
-    
-    // Redirect to login after 2 seconds
-    setTimeout(() => {
-      router.push({ name: 'login' })
-    }, 2000)
-  } catch (error) {
-    const errorData = error.response?.data
-    feedback.error = errorData?.error || 'Registration failed'
-    
-    // Set field-specific errors
-    if (errorData?.fields) {
-      if (errorData.fields.email) errors.email = errorData.error
-      if (errorData.fields.accountName) errors.accountName = errorData.error
-      if (errorData.fields.password) errors.password = errorData.error
-    }
-  } finally {
-    loading.value = false
-  }
-}
-</script>
-
 <template>
   <v-container class="py-8 d-flex justify-center align-center" style="min-height: 80vh">
     <v-card color="surface" elevation="4" max-width="500" width="100%">
@@ -145,24 +61,12 @@ const handleRegister = async () => {
             persistent-hint
             required
           />
-          <v-btn 
-            :loading="loading" 
-            color="primary" 
-            type="submit" 
-            block
-            size="large"
-            class="mb-3"
-          >
+          <v-btn :loading="loading" color="primary" type="submit" block size="large" class="mb-3">
             Register
           </v-btn>
           <div class="text-center">
             <span class="text-body-2">Already have an account? </span>
-            <v-btn
-              variant="text"
-              color="primary"
-              size="small"
-              :to="{ name: 'login' }"
-            >
+            <v-btn variant="text" color="primary" size="small" :to="{ name: 'login' }">
               Sign in
             </v-btn>
           </div>
@@ -171,3 +75,86 @@ const handleRegister = async () => {
     </v-card>
   </v-container>
 </template>
+<script setup>
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import apiClient from '../utils/api'
+
+const router = useRouter()
+
+const form = reactive({
+  email: '',
+  accountName: '',
+  password: '',
+})
+
+const loading = ref(false)
+const feedback = reactive({
+  success: '',
+  error: '',
+})
+
+const errors = reactive({
+  email: '',
+  accountName: '',
+  password: '',
+})
+
+// Email validation rules
+const emailRules = [
+  (v) => !!v || 'Email is required',
+  (v) => /.+@.+\..+/.test(v) || 'Email must be valid',
+]
+
+// Account name validation rules
+const accountNameRules = [
+  (v) => !!v || 'Account name is required',
+  (v) => (v && v.length >= 2) || 'Account name must be at least 2 characters',
+]
+
+// Password validation rules
+const passwordRules = [
+  (v) => !!v || 'Password is required',
+  (v) => (v && v.length >= 8) || 'Password must be at least 8 characters',
+]
+
+const clearErrors = () => {
+  errors.email = ''
+  errors.accountName = ''
+  errors.password = ''
+}
+
+const handleRegister = async () => {
+  clearErrors()
+  feedback.success = ''
+  feedback.error = ''
+
+  loading.value = true
+  try {
+    const response = await apiClient.post('/api/auth/register', form)
+    feedback.success = response.data.success || 'Registration successful!'
+
+    // Clear form
+    form.email = ''
+    form.accountName = ''
+    form.password = ''
+
+    // Redirect to login after 2 seconds
+    setTimeout(() => {
+      router.push({ name: 'login' })
+    }, 2000)
+  } catch (error) {
+    const errorData = error.response?.data
+    feedback.error = errorData?.error || 'Registration failed'
+
+    // Set field-specific errors
+    if (errorData?.fields) {
+      if (errorData.fields.email) errors.email = errorData.error
+      if (errorData.fields.accountName) errors.accountName = errorData.error
+      if (errorData.fields.password) errors.password = errorData.error
+    }
+  } finally {
+    loading.value = false
+  }
+}
+</script>

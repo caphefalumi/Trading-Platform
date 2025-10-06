@@ -33,7 +33,8 @@ const signOut = async () => {
         <template v-if="account">
           <span class="text-subtitle-2 me-2">{{ account.accountName }}</span>
           <v-btn variant="text" color="primary" @click="signOut">Sign out</v-btn>
-        </template>        <template v-else>
+        </template>
+        <template v-else>
           <v-btn variant="text" color="primary" :to="{ name: 'login' }">Sign in</v-btn>
         </template>
       </div>

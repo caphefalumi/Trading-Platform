@@ -5,6 +5,7 @@ import * as directives from 'vuetify/directives'
 import 'vuetify/styles'
 import '@mdi/font/css/materialdesignicons.css'
 import './style.css'
+import vue3GoogleLogin from 'vue3-google-login'
 import App from './App.vue'
 import router from './router'
 
@@ -27,5 +28,10 @@ const vuetify = createVuetify({
     },
   },
 })
-
-createApp(App).use(vuetify).use(router).mount('#app')
+const app = createApp(App)
+app.use(vuetify)
+app.use(vue3GoogleLogin, {
+  clientId: import.meta.env.VITE_CLIENT_ID,
+})
+app.use(router)
+app.mount('#app')

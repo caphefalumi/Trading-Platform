@@ -31,7 +31,10 @@ const fetchReference = async (tx, model, code) => {
 
 const getOppositeSide = (side) => (side === ORDER_SIDES.BUY ? ORDER_SIDES.SELL : ORDER_SIDES.BUY)
 
-const recordLedgerEntry = async (tx, { accountId, amount, currencyId, entryTypeCode, referenceId }) => {
+const recordLedgerEntry = async (
+  tx,
+  { accountId, amount, currencyId, entryTypeCode, referenceId },
+) => {
   const entryType = await fetchReference(tx, 'ledgerEntryType', entryTypeCode)
   await tx.ledgerEntry.create({
     data: {
@@ -109,7 +112,9 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
   })
 
   const previousQty = position ? toDecimal(position.quantity) : new Prisma.Decimal(0)
-  const previousValue = position ? toDecimal(position.averagePrice).mul(previousQty) : new Prisma.Decimal(0)
+  const previousValue = position
+    ? toDecimal(position.averagePrice).mul(previousQty)
+    : new Prisma.Decimal(0)
   const newQty = previousQty.add(fillQty)
   const totalValue = previousValue.add(fillValue)
   const newAvg = newQty.gt(0) ? totalValue.div(newQty) : new Prisma.Decimal(0)
@@ -152,7 +157,9 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
 
 const applySellFill = async (tx, { order, fillQty, tradePrice }) => {
   const fillValue = tradePrice.mul(fillQty)
-  const sellerBalance = await tx.accountBalance.findUnique({ where: { accountId: order.accountId } })
+  const sellerBalance = await tx.accountBalance.findUnique({
+    where: { accountId: order.accountId },
+  })
   if (!sellerBalance) {
     throw new Error('Seller balance not found')
   }
@@ -195,7 +202,10 @@ const applySellFill = async (tx, { order, fillQty, tradePrice }) => {
   }
 }
 
-const updateOrderFillState = async (tx, { orderId, fillQty, remainingQty, filledQty, statusId }) => {
+const updateOrderFillState = async (
+  tx,
+  { orderId, fillQty, remainingQty, filledQty, statusId },
+) => {
   await tx.order.update({
     where: { id: orderId },
     data: {
@@ -223,9 +233,10 @@ const matchOrder = async (tx, orderRecord, references) => {
         instrument: true,
         type: true,
       },
-      orderBy: references.sideCode === ORDER_SIDES.BUY
-        ? [{ price: 'asc' }, { createdAt: 'asc' }]
-        : [{ price: 'desc' }, { createdAt: 'asc' }],
+      orderBy:
+        references.sideCode === ORDER_SIDES.BUY
+          ? [{ price: 'asc' }, { createdAt: 'asc' }]
+          : [{ price: 'desc' }, { createdAt: 'asc' }],
     })
 
     if (!counterOrder) {
@@ -290,8 +301,12 @@ const matchOrder = async (tx, orderRecord, references) => {
     const counterNewRemaining = counterRemaining.sub(fillQty)
     const counterNewFilled = toDecimal(counterOrder.filledQuantity || 0).add(fillQty)
 
-    const orderStatusId = newRemaining.gt(0) ? references.partialStatusId : references.filledStatusId
-    const counterStatusId = counterNewRemaining.gt(0) ? references.partialStatusId : references.filledStatusId
+    const orderStatusId = newRemaining.gt(0)
+      ? references.partialStatusId
+      : references.filledStatusId
+    const counterStatusId = counterNewRemaining.gt(0)
+      ? references.partialStatusId
+      : references.filledStatusId
 
     await updateOrderFillState(tx, {
       orderId: orderRecord.id,
@@ -385,15 +400,16 @@ export const placeOrder = async (req, res) => {
         throw new Error('Invalid order type')
       }
 
-      const [sideRef, typeRef, tifRef, openStatus, partialStatus, filledStatus, cancelledStatus] = await Promise.all([
-        fetchReference(tx, 'orderSide', sideCode),
-        fetchReference(tx, 'orderType', typeCode),
-        fetchReference(tx, 'timeInForceType', tifCode),
-        fetchReference(tx, 'orderStatus', ORDER_STATUSES.OPEN),
-        fetchReference(tx, 'orderStatus', ORDER_STATUSES.PARTIAL),
-        fetchReference(tx, 'orderStatus', ORDER_STATUSES.FILLED),
-        fetchReference(tx, 'orderStatus', ORDER_STATUSES.CANCELLED),
-      ])
+      const [sideRef, typeRef, tifRef, openStatus, partialStatus, filledStatus, cancelledStatus] =
+        await Promise.all([
+          fetchReference(tx, 'orderSide', sideCode),
+          fetchReference(tx, 'orderType', typeCode),
+          fetchReference(tx, 'timeInForceType', tifCode),
+          fetchReference(tx, 'orderStatus', ORDER_STATUSES.OPEN),
+          fetchReference(tx, 'orderStatus', ORDER_STATUSES.PARTIAL),
+          fetchReference(tx, 'orderStatus', ORDER_STATUSES.FILLED),
+          fetchReference(tx, 'orderStatus', ORDER_STATUSES.CANCELLED),
+        ])
 
       const qtyDecimal = toDecimal(quantity)
       if (qtyDecimal.lte(0)) {

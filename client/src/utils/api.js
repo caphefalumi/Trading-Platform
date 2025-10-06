@@ -1,24 +1,11 @@
 import axios from 'axios'
-import { getSessionToken, clearUser } from '../stores/session'
+import { clearUser } from '../stores/session'
 import router from '../router'
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  withCredentials: true, // Include cookies in requests
 })
-
-// Request interceptor to add session token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = getSessionToken()
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
 
 // Response interceptor to handle authentication errors
 apiClient.interceptors.response.use(
@@ -30,7 +17,7 @@ apiClient.interceptors.response.use(
       router.push({ name: 'login' })
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default apiClient

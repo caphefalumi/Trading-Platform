@@ -5,9 +5,6 @@ import DashboardView from '../views/DashboardView.vue'
 import { sessionState, initSession, clearUser } from '../stores/session'
 import apiClient from '../utils/api'
 
-// Initialize session from localStorage
-initSession()
-
 const routes = [
   {
     path: '/',
@@ -46,22 +43,17 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   // If route requires authentication
   if (to.meta.requiresAuth) {
-    if (!sessionState.account || !sessionState.sessionToken) {
-      return { name: 'login' }
-    }
-
-    // Validate session with server (only on first load or if needed)
-    if (to.name === 'dashboard' && !sessionState.validated) {
+    // Check with server if session is valid
+    if (!sessionState.account && !sessionState.isLoading) {
       try {
-        const { data } = await apiClient.get('/api/auth/me')
-        sessionState.validated = true
-        // Update account info in case it changed
-        sessionState.account = data.account
+        await initSession()
       } catch (error) {
-        // Session is invalid
-        clearUser()
         return { name: 'login' }
       }
+    }
+
+    if (!sessionState.account) {
+      return { name: 'login' }
     }
   }
 

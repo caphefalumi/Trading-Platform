@@ -1,54 +1,93 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../utils/prisma.js'
 import { Prisma } from '@prisma/client'
+import { createSession, deleteSession } from '../utils/session.js'
 
-const localRegister = async (req, res) => {
-  const { email, username, password } = req.body
-  const provider = 'local'
+// Input validation helpers
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ error: 'All fields are required.' })
+const validatePassword = (password) => {
+  // At least 8 characters
+  return password && password.length >= 8
+}
+
+const validateAccountName = (name) => {
+  return name && name.trim().length >= 2
+}
+
+export const register = async (req, res) => {
+  const { email, accountName, password } = req.body
+
+  // Validate required fields
+  if (!email || !accountName || !password) {
+    return res.status(400).json({ 
+      error: 'All fields are required.',
+      fields: { email: !email, accountName: !accountName, password: !password }
+    })
+  }
+
+  // Validate email format
+  if (!validateEmail(email)) {
+    return res.status(400).json({ 
+      error: 'Please enter a valid email address.',
+      fields: { email: true }
+    })
+  }
+
+  // Validate account name
+  if (!validateAccountName(accountName)) {
+    return res.status(400).json({ 
+      error: 'Account name must be at least 2 characters long.',
+      fields: { accountName: true }
+    })
+  }
+
+  // Validate password strength
+  if (!validatePassword(password)) {
+    return res.status(400).json({ 
+      error: 'Password must be at least 8 characters long.',
+      fields: { password: true }
+    })
   }
 
   try {
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ username }, { email }],
-      },
+    // Check if email already exists
+    const existingAccount = await prisma.account.findUnique({
+      where: { email: email.toLowerCase() }
     })
 
-    if (existingUser) {
-      if (existingUser.username === username) {
-        return res.status(400).json({ error: 'Username already exists.' })
-      }
-      if (existingUser.email === email) {
-        return res.status(400).json({ error: 'Email already exists.' })
-      }
+    if (existingAccount) {
+      return res.status(400).json({ 
+        error: 'An account with this email already exists.',
+        fields: { email: true }
+      })
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          username,
-          email,
-          password: hashedPassword,
-          provider,
-        },
+    // Get default currency
+    const currency = await prisma.currency.findUnique({ 
+      where: { code: 'USDT' } 
+    })
+    
+    if (!currency) {
+      return res.status(500).json({ 
+        error: 'System configuration error. Please contact support.' 
       })
+    }
 
-      const currency = await tx.currency.findUnique({ where: { code: 'USDT' } })
-      if (!currency) {
-        throw new Error('Default currency not configured')
-      }
-
+    // Create account and balance in transaction
+    await prisma.$transaction(async (tx) => {
       const account = await tx.account.create({
         data: {
-          userId: user.id,
-          accountName: `${username} Primary`,
+          email: email.toLowerCase(),
+          password: hashedPassword,
+          accountName: accountName.trim(),
           currencyId: currency.id,
-          isPrimary: true,
         },
       })
 
@@ -63,41 +102,112 @@ const localRegister = async (req, res) => {
       })
     })
 
-    res.status(201).json({ success: 'Account created.' })
+    res.status(201).json({ 
+      success: 'Account created successfully. You can now log in.' 
+    })
   } catch (err) {
-    res.status(400).json({ error: err.message })
+    console.error('Registration error:', err)
+    res.status(500).json({ 
+      error: 'An error occurred during registration. Please try again.' 
+    })
   }
 }
 
-const localLogin = async (req, res) => {
-  const { username, password } = req.body
-  if (!username || !password) {
-    return res.status(400).json({ error: 'All fields are required.' })
+export const login = async (req, res) => {
+  const { email, password } = req.body
+
+  // Validate required fields
+  if (!email || !password) {
+    return res.status(400).json({ 
+      error: 'Email and password are required.',
+      fields: { email: !email, password: !password }
+    })
+  }
+
+  // Validate email format
+  if (!validateEmail(email)) {
+    return res.status(400).json({ 
+      error: 'Please enter a valid email address.',
+      fields: { email: true }
+    })
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { username } })
+    const account = await prisma.account.findUnique({ 
+      where: { email: email.toLowerCase() },
+      select: {
+        id: true,
+        email: true,
+        accountName: true,
+        password: true,
+        createdAt: true,
+      }
+    })
 
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid username or password' })
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password)
+    if (!account) {
+      return res.status(401).json({ 
+        error: 'Invalid email or password.' 
+      })
+    }    const isMatch = await bcrypt.compare(password, account.password)
     if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid username or password' })
+      return res.status(401).json({ 
+        error: 'Invalid email or password.' 
+      })
     }
+
+    // Create session
+    const session = await createSession(account.id)
 
     return res.status(200).json({
-      success: 'User is authorized',
-      user: {
-        userId: user.id,
-        username: user.username,
-        email: user.email,
-      },
+      success: 'Login successful',
+      sessionToken: session.token,
+      account: session.account,
     })
   } catch (error) {
-    res.status(400).json({ error: error.message })
+    console.error('Login error:', error)
+    res.status(500).json({ 
+      error: 'An error occurred during login. Please try again.' 
+    })
   }
 }
 
-export { localRegister, localLogin }
+export const logout = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.sessionToken
+
+    if (token) {
+      await deleteSession(token)
+    }
+
+    return res.status(200).json({
+      success: 'Logged out successfully'
+    })
+  } catch (error) {
+    console.error('Logout error:', error)
+    res.status(500).json({ 
+      error: 'An error occurred during logout.' 
+    })
+  }
+}
+
+export const getCurrentAccount = async (req, res) => {
+  try {
+    // Account is attached by middleware
+    if (!req.account) {
+      return res.status(401).json({ error: 'Not authenticated' })
+    }
+
+    return res.status(200).json({
+      account: req.account
+    })
+  } catch (error) {
+    console.error('Get current account error:', error)
+    res.status(500).json({ 
+      error: 'An error occurred.' 
+    })
+  }
+}
+
+// Export both named exports and aliases for backward compatibility
+export const localRegister = register
+export const localLogin = login

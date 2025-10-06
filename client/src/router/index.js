@@ -1,7 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import AuthView from '../views/AuthView.vue'
+import LoginView from '../views/LoginView.vue'
+import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
-import { sessionState } from '../stores/session'
+import { sessionState, initSession, clearUser } from '../stores/session'
+import apiClient from '../utils/api'
+
+// Initialize session from localStorage
+initSession()
 
 const routes = [
   {
@@ -9,9 +14,15 @@ const routes = [
     redirect: { name: 'dashboard' },
   },
   {
-    path: '/auth',
-    name: 'auth',
-    component: AuthView,
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { requiresGuest: true },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: RegisterView,
     meta: { requiresGuest: true },
   },
   {
@@ -31,12 +42,31 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !sessionState.user) {
-    return { name: 'auth' }
+// Validate session with server on protected routes
+router.beforeEach(async (to) => {
+  // If route requires authentication
+  if (to.meta.requiresAuth) {
+    if (!sessionState.account || !sessionState.sessionToken) {
+      return { name: 'login' }
+    }
+
+    // Validate session with server (only on first load or if needed)
+    if (to.name === 'dashboard' && !sessionState.validated) {
+      try {
+        const { data } = await apiClient.get('/api/auth/me')
+        sessionState.validated = true
+        // Update account info in case it changed
+        sessionState.account = data.account
+      } catch (error) {
+        // Session is invalid
+        clearUser()
+        return { name: 'login' }
+      }
+    }
   }
 
-  if (to.meta.requiresGuest && sessionState.user) {
+  // If route requires guest (login/register pages)
+  if (to.meta.requiresGuest && sessionState.account) {
     return { name: 'dashboard' }
   }
 

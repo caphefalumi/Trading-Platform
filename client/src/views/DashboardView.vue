@@ -1,16 +1,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import axios from 'axios'
+import apiClient from '../utils/api'
 import { sessionState } from '../stores/session'
 
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
-})
-
-const user = computed(() => sessionState.user)
-
-const accounts = ref([])
-const selectedAccountId = ref('')
+const account = computed(() => sessionState.account)
 const accountSummary = ref(null)
 const instruments = ref([])
 const selectedInstrumentId = ref('')
@@ -62,8 +55,6 @@ const resetOrderForm = () => {
 }
 
 const resetDashboardState = () => {
-  accounts.value = []
-  selectedAccountId.value = ''
   accountSummary.value = null
   orders.value = []
   depositAmount.value = ''
@@ -86,24 +77,10 @@ const fetchInstruments = async () => {
   }
 }
 
-const fetchAccounts = async (userId) => {
-  try {
-    const { data } = await apiClient.get(`/api/accounts/user/${userId}`)
-    accounts.value = data
-    if (data.length) {
-      selectedAccountId.value = data[0].id
-    } else {
-      selectedAccountId.value = ''
-    }
-  } catch (error) {
-    setError(error.response?.data?.error || 'Unable to load accounts')
-  }
-}
-
 const fetchAccountSummary = async () => {
-  if (!selectedAccountId.value) return
+  if (!account.value?.id) return
   try {
-    const { data } = await apiClient.get(`/api/accounts/${selectedAccountId.value}/summary`)
+    const { data } = await apiClient.get(`/api/accounts/${account.value.id}/summary`)
     accountSummary.value = data
   } catch (error) {
     setError(error.response?.data?.error || 'Unable to load account summary')
@@ -111,9 +88,9 @@ const fetchAccountSummary = async () => {
 }
 
 const fetchOrders = async () => {
-  if (!selectedAccountId.value) return
+  if (!account.value?.id) return
   try {
-    const { data } = await apiClient.get(`/api/orders/account/${selectedAccountId.value}`)
+    const { data } = await apiClient.get(`/api/orders/account/${account.value.id}`)
     orders.value = data
   } catch (error) {
     setError(error.response?.data?.error || 'Unable to load orders')
@@ -131,7 +108,7 @@ const fetchOrderBook = async () => {
 }
 
 const submitDeposit = async () => {
-  if (!selectedAccountId.value) return setError('Select an account first')
+  if (!account.value?.id) return setError('Account not found')
   const amount = Number.parseFloat(depositAmount.value)
   if (!amount || amount <= 0) {
     setError('Enter a valid deposit amount')
@@ -139,7 +116,7 @@ const submitDeposit = async () => {
   }
   loading.deposit = true
   try {
-    await apiClient.post(`/api/accounts/${selectedAccountId.value}/deposit`, { amount })
+    await apiClient.post(`/api/accounts/${account.value.id}/deposit`, { amount })
     setSuccess('Deposit completed')
     depositAmount.value = ''
     await Promise.all([fetchAccountSummary(), fetchOrders()])
@@ -151,7 +128,7 @@ const submitDeposit = async () => {
 }
 
 const submitWithdraw = async () => {
-  if (!selectedAccountId.value) return setError('Select an account first')
+  if (!account.value?.id) return setError('Account not found')
   const amount = Number.parseFloat(withdrawAmount.value)
   if (!amount || amount <= 0) {
     setError('Enter a valid withdrawal amount')
@@ -159,7 +136,7 @@ const submitWithdraw = async () => {
   }
   loading.withdraw = true
   try {
-    await apiClient.post(`/api/accounts/${selectedAccountId.value}/withdraw`, { amount })
+    await apiClient.post(`/api/accounts/${account.value.id}/withdraw`, { amount })
     setSuccess('Withdrawal completed')
     withdrawAmount.value = ''
     await Promise.all([fetchAccountSummary(), fetchOrders()])
@@ -171,17 +148,16 @@ const submitWithdraw = async () => {
 }
 
 const placeOrder = async () => {
-  if (!selectedAccountId.value || !selectedInstrumentId.value) {
-    setError('Select account and instrument first')
+  if (!account.value?.id || !selectedInstrumentId.value) {
+    setError('Select instrument first')
     return
   }
   const quantity = Number.parseFloat(orderForm.quantity)
   if (!quantity || quantity <= 0) {
     setError('Enter a valid quantity')
     return
-  }
-  const payload = {
-    accountId: selectedAccountId.value,
+  }  const payload = {
+    accountId: account.value.id,
     instrumentId: selectedInstrumentId.value,
     side: orderForm.side,
     type: orderForm.type,
@@ -211,27 +187,15 @@ const placeOrder = async () => {
 }
 
 watch(
-  () => user.value?.userId,
-  async (userId) => {
-    if (userId) {
-      await fetchAccounts(userId)
+  () => account.value?.id,
+  async (accountId) => {
+    if (accountId) {
+      await Promise.all([fetchAccountSummary(), fetchOrders()])
     } else {
       resetDashboardState()
     }
   },
   { immediate: true },
-)
-
-watch(
-  selectedAccountId,
-  async (accountId) => {
-    if (!accountId) {
-      accountSummary.value = null
-      orders.value = []
-      return
-    }
-    await Promise.all([fetchAccountSummary(), fetchOrders()])
-  },
 )
 
 watch(
@@ -269,21 +233,14 @@ onMounted(async () => {
     </v-row>
 
     <v-row class="mb-6" align="stretch">
-      <v-col cols="12" md="4">
-        <v-card color="surface" elevation="6">
-          <v-card-title class="text-h6">Accounts</v-card-title>
+      <v-col cols="12" md="4">        <v-card color="surface" elevation="6">
+          <v-card-title class="text-h6">Account Summary</v-card-title>
           <v-card-text>
-            <v-select
-              v-model="selectedAccountId"
-              :items="accounts"
-              item-title="accountName"
-              item-value="id"
-              label="Account"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            />
-            <div v-if="accountSummary" class="mt-6">
+            <div v-if="account" class="mb-4">
+              <div class="text-caption text-uppercase text-medium-emphasis">Account Name</div>
+              <div class="text-body-1 font-weight-medium">{{ account.accountName }}</div>
+            </div>
+            <div v-if="accountSummary" class="mt-4">
               <div class="text-caption text-uppercase text-medium-emphasis">Available Balance</div>
               <div class="text-h5 font-weight-bold">
                 {{ formatNumber(accountSummary.account.balance.available, 2) }} {{ accountCurrency }}

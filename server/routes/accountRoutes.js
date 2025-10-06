@@ -1,9 +1,12 @@
 import express from 'express'
-import { depositFunds, getAccountSummary, listUserAccounts, withdrawFunds } from '../controllers/accounts.js'
+import { depositFunds, getAccountSummary, withdrawFunds } from '../controllers/accounts.js'
+import { requireAuth } from '../middleware/auth.js'
 
 const router = express.Router()
 
-router.get('/user/:userId', listUserAccounts)
+// All account routes require authentication
+router.use(requireAuth)
+
 router.get('/:accountId/summary', getAccountSummary)
 router.post('/:accountId/deposit', depositFunds)
 router.post('/:accountId/withdraw', withdrawFunds)

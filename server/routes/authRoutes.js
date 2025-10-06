@@ -1,5 +1,11 @@
 import express from 'express'
-import { register, login, logout, getCurrentAccount } from '../controllers/authentication.js'
+import {
+  register,
+  login,
+  oauthGoogle,
+  logout,
+  getCurrentAccount,
+} from '../controllers/authentication.js'
 import { requireAuth } from '../middleware/auth.js'
 
 const router = express.Router()
@@ -10,6 +16,7 @@ router.post('/register', register)
 // Login route - POST /api/auth/login
 router.post('/login', login)
 
+router.post('/oauth/google', oauthGoogle)
 // Logout route - POST /api/auth/logout
 router.post('/logout', logout)
 

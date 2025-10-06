@@ -3,8 +3,8 @@ import { validateSession } from '../utils/session.js'
 // Middleware to require authentication
 export const requireAuth = async (req, res, next) => {
   try {
-    // Get token from Authorization header or cookie
-    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.sessionToken
+    // Get token from cookie
+    const token = req.cookies?.sessionId
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' })
@@ -30,7 +30,7 @@ export const requireAuth = async (req, res, next) => {
 // Middleware to optionally attach account if authenticated
 export const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.sessionToken
+    const token = req.cookies?.sessionId
 
     if (token) {
       const session = await validateSession(token)

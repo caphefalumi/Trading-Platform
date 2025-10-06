@@ -57,7 +57,8 @@ export const getAccountSummary = async (req, res) => {
 
     const portfolio = account.positions.map((position) => {
       const lastQuote = position.instrument.marketQuotes[0]
-      const markPrice = lastQuote?.lastPrice || lastQuote?.bidPrice || lastQuote?.askPrice || new Prisma.Decimal(0)
+      const markPrice =
+        lastQuote?.lastPrice || lastQuote?.bidPrice || lastQuote?.askPrice || new Prisma.Decimal(0)
       const marketValue = toDecimal(position.quantity).mul(toDecimal(markPrice))
       return {
         instrumentId: position.instrumentId,

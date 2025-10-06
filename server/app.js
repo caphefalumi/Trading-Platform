@@ -4,6 +4,7 @@ import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import routes from './routes/router.js'
+import { ensureReferenceData } from './utils/referenceData.js'
 const app = express()
 app.use(
   cors({
@@ -22,10 +23,17 @@ app.use(routes)
 
 const PORT = process.env.PORT || 3001
 
-// For local development
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  ensureReferenceData()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`)
+      })
+    })
+    .catch((error) => {
+      console.error('Failed to prepare reference data', error)
+      process.exit(1)
+    })
+}
 
-// Export for Vercel
 export default app

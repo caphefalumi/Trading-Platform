@@ -7,24 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id         String    @id @default(uuid())
-  username   String    @unique
-  email      String    @unique
-  password   String
-  provider   Provider
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  accounts   Account[]
-
-  @@map("users")
-}
-
-enum Provider {
-  local
-  google
-}
-
 model Currency {
   id        String          @id @default(uuid())
   code      String          @unique
@@ -105,20 +87,32 @@ model TimeInForceType {
 
 model Account {
   id          String           @id @default(uuid())
-  userId      String           @map("user_id")
-  user        User             @relation(fields: [userId], references: [id])
+  email       String           @unique
+  password    String
   accountName String           @map("account_name")
   currencyId  String           @map("currency_id")
   currency    Currency         @relation(fields: [currencyId], references: [id])
   createdAt   DateTime         @default(now()) @map("created_at")
-  isPrimary   Boolean          @default(false) @map("is_primary")
   orders      Order[]
   positions   Position[]
   ledgerEntries LedgerEntry[]
   transactions Transaction[]
   balance     AccountBalance?
+  sessions    Session[]
 
   @@map("accounts")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  accountId String   @map("account_id")
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+  @@map("sessions")
 }
 
 model Order {
@@ -127,13 +121,13 @@ model Order {
   account           Account     @relation(fields: [accountId], references: [id])
   instrumentId      String      @map("instrument_id")
   instrument        Instrument  @relation(fields: [instrumentId], references: [id])
-  sideId            Int         @map("side_id")
+  sideId            Int         @map("side_id") @db.SmallInt
   side              OrderSide   @relation(fields: [sideId], references: [id])
-  typeId            Int         @map("type_id")
+  typeId            Int         @map("type_id") @db.SmallInt
   type              OrderType   @relation(fields: [typeId], references: [id])
-  statusId          Int         @map("status_id")
+  statusId          Int         @map("status_id") @db.SmallInt
   status            OrderStatus @relation(fields: [statusId], references: [id])
-  timeInForceId     Int?        @map("time_in_force_id")
+  timeInForceId     Int?        @map("time_in_force_id") @db.SmallInt
   timeInForce       TimeInForceType? @relation(fields: [timeInForceId], references: [id])
   clientOrderId     String?     @unique @map("client_order_id")
   price             Decimal?    @db.Decimal(18, 8)
@@ -190,7 +184,7 @@ model LedgerEntry {
   id           String          @id @default(uuid())
   accountId    String          @map("account_id")
   account      Account         @relation(fields: [accountId], references: [id])
-  entryTypeId  Int             @map("entry_type_id")
+  entryTypeId  Int             @map("entry_type_id") @db.SmallInt
   entryType    LedgerEntryType @relation(fields: [entryTypeId], references: [id])
   amount       Decimal         @db.Decimal(18, 8)
   currencyId   String          @map("currency_id")
@@ -251,9 +245,9 @@ model Transaction {
   id         String            @id @default(uuid())
   accountId  String            @map("account_id")
   account    Account           @relation(fields: [accountId], references: [id])
-  txTypeId   Int               @map("tx_type_id")
+  txTypeId   Int               @map("tx_type_id") @db.SmallInt
   txType     TransactionType   @relation(fields: [txTypeId], references: [id])
-  statusId   Int               @map("status_id")
+  statusId   Int               @map("status_id") @db.SmallInt
   status     TransactionStatus @relation(fields: [statusId], references: [id])
   amount     Decimal           @db.Decimal(18, 8)
   currencyId String            @map("currency_id")
@@ -269,6 +263,7 @@ model ActorType {
   id          Int        @id @default(autoincrement()) @db.SmallInt
   code        String     @unique
   description String?
+  auditLogs   AuditLog[] @relation("ActorTypeToAuditLog")
 
   @@map("actor_types")
 }
@@ -278,6 +273,7 @@ model ActionType {
   code        String     @unique
   description String?
   category    String?
+  auditLogs   AuditLog[] @relation("ActionTypeToAuditLog")
 
   @@map("action_types")
 }
@@ -286,6 +282,7 @@ model ObjectType {
   id          Int        @id @default(autoincrement()) @db.SmallInt
   code        String     @unique
   description String?
+  auditLogs   AuditLog[] @relation("ObjectTypeToAuditLog")
 
   @@map("object_types")
 }
@@ -293,12 +290,12 @@ model ObjectType {
 model AuditLog {
   id             String     @id @default(uuid())
   actorId        String?    @map("actor_id")
-  actorTypeId    Int?       @map("actor_type_id")
-  actorType      ActorType? @relation(fields: [actorTypeId], references: [id])
-  actionId       Int?       @map("action_id")
-  action         ActionType? @relation(fields: [actionId], references: [id])
-  objectTypeId   Int?       @map("object_type_id")
-  objectType     ObjectType? @relation(fields: [objectTypeId], references: [id])
+  actorTypeId    Int?       @map("actor_type_id") @db.SmallInt
+  actorType      ActorType? @relation("ActorTypeToAuditLog", fields: [actorTypeId], references: [id])
+  actionId       Int?       @map("action_id") @db.SmallInt
+  action         ActionType? @relation("ActionTypeToAuditLog", fields: [actionId], references: [id])
+  objectTypeId   Int?       @map("object_type_id") @db.SmallInt
+  objectType     ObjectType? @relation("ObjectTypeToAuditLog", fields: [objectTypeId], references: [id])
   objectId       String?    @map("object_id")
   oldValues      Json?      @map("old_values")
   newValues      Json?      @map("new_values")

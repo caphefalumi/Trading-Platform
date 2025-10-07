@@ -68,43 +68,16 @@ export const register = async (req, res) => {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
-
-    // Get default currency
-    const currency = await prisma.currency.findUnique({
-      where: { code: 'USDT' },
+    await prisma.account.create({
+      data: {
+        id: uuidv7(),
+        username,
+        email,
+        password: hashedPassword,
+        provider,
+      },
     })
-
-    if (!currency) {
-      return res.status(500).json({
-        error: 'System configuration error. Please contact support.',
-      })
-    }
-
-    // Create account and balance in transaction
-    await prisma.$transaction(async (tx) => {
-      const account = await tx.account.create({
-        data: {
-          email: email.toLowerCase(),
-          password: hashedPassword,
-          accountName: accountName.trim(),
-          currencyId: currency.id,
-        },
-      })
-
-      await tx.accountBalance.create({
-        data: {
-          accountId: account.id,
-          currencyId: currency.id,
-          available: new Prisma.Decimal(0),
-          reserved: new Prisma.Decimal(0),
-          total: new Prisma.Decimal(0),
-        },
-      })
-    })
-
-    res.status(201).json({
-      success: 'Account created successfully. You can now log in.',
-    })
+    res.status(201).json({ success: 'account created.' })
   } catch (err) {
     console.error('Registration error:', err)
     res.status(500).json({

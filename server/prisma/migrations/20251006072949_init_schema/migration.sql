@@ -1,0 +1,349 @@
+-- CreateTable
+CREATE TABLE `ACCOUNT` (
+    `id` VARCHAR(191) NOT NULL,
+    `account_name` VARCHAR(191) NOT NULL,
+    `currency_id` VARCHAR(191) NOT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `is_primary` BOOLEAN NOT NULL,
+    `username` VARCHAR(191) NOT NULL,
+    `email` VARCHAR(191) NOT NULL,
+    `password` VARCHAR(191) NOT NULL,
+    `provider` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `ACCOUNT_username_key`(`username`),
+    UNIQUE INDEX `ACCOUNT_email_key`(`email`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `CURRENCIES` (
+    `id` VARCHAR(191) NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `symbol` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `CURRENCIES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ASSET_CLASSES` (
+    `id` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `ASSET_CLASSES_name_key`(`name`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `INSTRUMENTS` (
+    `id` VARCHAR(191) NOT NULL,
+    `symbol` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `asset_class_id` VARCHAR(191) NOT NULL,
+    `lot_size` DECIMAL(65, 30) NOT NULL,
+    `tick_size` DECIMAL(65, 30) NOT NULL,
+    `currency_id` VARCHAR(191) NOT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `INSTRUMENTS_symbol_key`(`symbol`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ORDER_SIDES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `ORDER_SIDES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ORDER_STATUSES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `ORDER_STATUSES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ORDER_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `ORDER_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `TIME_IN_FORCE_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `TIME_IN_FORCE_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ORDERS` (
+    `id` VARCHAR(191) NOT NULL,
+    `account_id` VARCHAR(191) NOT NULL,
+    `instrument_id` VARCHAR(191) NOT NULL,
+    `side_id` INTEGER NOT NULL,
+    `type_id` INTEGER NOT NULL,
+    `status_id` INTEGER NOT NULL,
+    `time_in_force_id` INTEGER NOT NULL,
+    `client_order_id` VARCHAR(191) NOT NULL,
+    `price` DECIMAL(65, 30) NULL,
+    `quantity` DECIMAL(65, 30) NOT NULL,
+    `filled_quantity` DECIMAL(65, 30) NULL,
+    `remaining_quantity` DECIMAL(65, 30) NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `ORDERS_client_order_id_key`(`client_order_id`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `EXECUTIONS` (
+    `id` VARCHAR(191) NOT NULL,
+    `order_id` VARCHAR(191) NOT NULL,
+    `instrument_id` VARCHAR(191) NOT NULL,
+    `counterparty_order_id` VARCHAR(191) NULL,
+    `price` DECIMAL(65, 30) NOT NULL,
+    `quantity` DECIMAL(65, 30) NOT NULL,
+    `executed_at` DATETIME(3) NOT NULL,
+    `liquidity` VARCHAR(191) NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `POSITIONS` (
+    `id` VARCHAR(191) NOT NULL,
+    `account_id` VARCHAR(191) NOT NULL,
+    `instrument_id` VARCHAR(191) NOT NULL,
+    `quantity` DECIMAL(65, 30) NOT NULL,
+    `average_price` DECIMAL(65, 30) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `LEDGER_ENTRY_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+    `category` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `LEDGER_ENTRY_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `LEDGER_ENTRIES` (
+    `id` VARCHAR(191) NOT NULL,
+    `account_id` VARCHAR(191) NOT NULL,
+    `entry_type_id` INTEGER NOT NULL,
+    `amount` DECIMAL(65, 30) NOT NULL,
+    `currency_id` VARCHAR(191) NOT NULL,
+    `reference_id` VARCHAR(191) NULL,
+    `reference_table` VARCHAR(191) NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ACCOUNT_BALANCES` (
+    `account_id` VARCHAR(191) NOT NULL,
+    `available` DECIMAL(65, 30) NOT NULL,
+    `reserved` DECIMAL(65, 30) NOT NULL,
+    `total` DECIMAL(65, 30) NOT NULL,
+    `currency_id` VARCHAR(191) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`account_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `MARKET_QUOTES` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `instrument_id` VARCHAR(191) NOT NULL,
+    `bid_price` DECIMAL(65, 30) NULL,
+    `ask_price` DECIMAL(65, 30) NULL,
+    `last_price` DECIMAL(65, 30) NULL,
+    `volume` DECIMAL(65, 30) NULL,
+    `ts` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `TRANSACTION_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+    `category` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `TRANSACTION_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `TRANSACTION_STATUSES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `TRANSACTION_STATUSES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `TRANSACTIONS` (
+    `id` VARCHAR(191) NOT NULL,
+    `account_id` VARCHAR(191) NOT NULL,
+    `tx_type_id` INTEGER NOT NULL,
+    `status_id` INTEGER NOT NULL,
+    `amount` DECIMAL(65, 30) NOT NULL,
+    `currency_id` VARCHAR(191) NOT NULL,
+    `external_ref` VARCHAR(191) NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ACTOR_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `ACTOR_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ACTION_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+    `category` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `ACTION_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `OBJECT_TYPES` (
+    `id` INTEGER NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `OBJECT_TYPES_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `AUDIT_LOG` (
+    `id` VARCHAR(191) NOT NULL,
+    `actor_id` VARCHAR(191) NULL,
+    `actor_type_id` INTEGER NOT NULL,
+    `action_id` INTEGER NOT NULL,
+    `object_type_id` INTEGER NOT NULL,
+    `object_id` VARCHAR(191) NULL,
+    `old_values` JSON NULL,
+    `new_values` JSON NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `ACCOUNT` ADD CONSTRAINT `ACCOUNT_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `CURRENCIES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `INSTRUMENTS` ADD CONSTRAINT `INSTRUMENTS_asset_class_id_fkey` FOREIGN KEY (`asset_class_id`) REFERENCES `ASSET_CLASSES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `INSTRUMENTS` ADD CONSTRAINT `INSTRUMENTS_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `CURRENCIES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ORDERS` ADD CONSTRAINT `ORDERS_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `ACCOUNT`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ORDERS` ADD CONSTRAINT `ORDERS_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `INSTRUMENTS`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ORDERS` ADD CONSTRAINT `ORDERS_side_id_fkey` FOREIGN KEY (`side_id`) REFERENCES `ORDER_SIDES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ORDERS` ADD CONSTRAINT `ORDERS_type_id_fkey` FOREIGN KEY (`type_id`) REFERENCES `ORDER_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ORDERS` ADD CONSTRAINT `ORDERS_status_id_fkey` FOREIGN KEY (`status_id`) REFERENCES `ORDER_STATUSES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ORDERS` ADD CONSTRAINT `ORDERS_time_in_force_id_fkey` FOREIGN KEY (`time_in_force_id`) REFERENCES `TIME_IN_FORCE_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `EXECUTIONS` ADD CONSTRAINT `EXECUTIONS_order_id_fkey` FOREIGN KEY (`order_id`) REFERENCES `ORDERS`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `EXECUTIONS` ADD CONSTRAINT `EXECUTIONS_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `INSTRUMENTS`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `POSITIONS` ADD CONSTRAINT `POSITIONS_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `ACCOUNT`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `POSITIONS` ADD CONSTRAINT `POSITIONS_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `INSTRUMENTS`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `LEDGER_ENTRIES` ADD CONSTRAINT `LEDGER_ENTRIES_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `ACCOUNT`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `LEDGER_ENTRIES` ADD CONSTRAINT `LEDGER_ENTRIES_entry_type_id_fkey` FOREIGN KEY (`entry_type_id`) REFERENCES `LEDGER_ENTRY_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `LEDGER_ENTRIES` ADD CONSTRAINT `LEDGER_ENTRIES_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `CURRENCIES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ACCOUNT_BALANCES` ADD CONSTRAINT `ACCOUNT_BALANCES_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `ACCOUNT`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ACCOUNT_BALANCES` ADD CONSTRAINT `ACCOUNT_BALANCES_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `CURRENCIES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `MARKET_QUOTES` ADD CONSTRAINT `MARKET_QUOTES_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `INSTRUMENTS`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `TRANSACTIONS` ADD CONSTRAINT `TRANSACTIONS_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `ACCOUNT`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `TRANSACTIONS` ADD CONSTRAINT `TRANSACTIONS_tx_type_id_fkey` FOREIGN KEY (`tx_type_id`) REFERENCES `TRANSACTION_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `TRANSACTIONS` ADD CONSTRAINT `TRANSACTIONS_status_id_fkey` FOREIGN KEY (`status_id`) REFERENCES `TRANSACTION_STATUSES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `TRANSACTIONS` ADD CONSTRAINT `TRANSACTIONS_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `CURRENCIES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `AUDIT_LOG` ADD CONSTRAINT `AUDIT_LOG_actor_type_id_fkey` FOREIGN KEY (`actor_type_id`) REFERENCES `ACTOR_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `AUDIT_LOG` ADD CONSTRAINT `AUDIT_LOG_action_id_fkey` FOREIGN KEY (`action_id`) REFERENCES `ACTION_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `AUDIT_LOG` ADD CONSTRAINT `AUDIT_LOG_object_type_id_fkey` FOREIGN KEY (`object_type_id`) REFERENCES `OBJECT_TYPES`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

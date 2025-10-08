@@ -127,7 +127,7 @@ export const login = async (req, res) => {
   // Validate email format
   if (!validateEmail(email)) {
     return res.status(400).json({
-      error: 'Please enter a valid email address.',
+      error: 'Please enter a valid email 123 address.',
       fields: { email: true },
     })
   }

@@ -166,6 +166,5 @@ void MatchingEngine::run() {
 }
 
 void MatchingEngine::sendToNodeJS(const std::string& message) {
-    // For push notifications to Node.js (would need another socket)
     std::cout << "TRADE_NOTIFICATION: " << message << std::endl;
 }

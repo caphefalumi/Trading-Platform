@@ -8,8 +8,9 @@
           <li><span class="mdi mdi-currency-usd"></span> Trade</li>
           <li><span class="mdi mdi-chart-line"></span> Market update</li>
           <li><span class="mdi mdi-calculator"></span> Income estimator</li>
-          <li><span class="mdi mdi-chart-area"></span> Interactive chart</li>
+          <li><span class="mdi mdi-chart-bar"></span> Interactive chart</li>
           <li><span class="mdi mdi-hand-coin"></span> Mutual funds</li>
+          <li><span class="mdi mdi-robot"></span> Vocer</li>
         </ul>
 
         <h2>ACCOUNT</h2>

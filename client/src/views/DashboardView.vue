@@ -873,6 +873,10 @@ const initializeMenuInteractivity = () => {
   color: var(--text-color-faded);
 }
 
+.search-bar:hover {
+  border: #a0a0b0 1px solid;
+}
+
 .user-actions {
   display: flex;
   align-items: center;
@@ -890,11 +894,13 @@ const initializeMenuInteractivity = () => {
 .user-avatar {
   font-size: 30px !important;
   color: var(--green-color) !important;
+  margin-left: 2%;
 }
 
 .user-avatar:hover {
-  box-shadow: 0 0 0 4px white;
-  border-radius: 50%;
+  /* box-shadow: 0 0 0 4px white;
+  border-radius: 50%; */
+  cursor: pointer;
 }
 
 /* Alert Messages */

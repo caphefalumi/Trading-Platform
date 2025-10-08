@@ -86,286 +86,220 @@ model TimeInForceType {
 }
 
 model Account {
-  id             String            @id @default(uuid())
-  account_name   String
-  currency_id    String
-  currency       Currencies        @relation(fields: [currency_id], references: [id])
-  created_at     DateTime          @default(now())
-  is_primary     Boolean
-  orders         Orders[]
-  positions      Positions[]
-  ledger_entries LedgerEntries[]
-  transactions   Transactions[]
-  balance        AccountBalances?
-  username       String            @unique
-  email          String            @unique
-  password       String
-  provider       String
-  @@map("ACCOUNT")
+  id          String           @id @default(uuid())
+  email       String           @unique
+  password    String
+  accountName String           @map("account_name")
+  currencyId  String           @map("currency_id")
+  currency    Currency         @relation(fields: [currencyId], references: [id])
+  createdAt   DateTime         @default(now()) @map("created_at")
+  orders      Order[]
+  positions   Position[]
+  ledgerEntries LedgerEntry[]
+  transactions Transaction[]
+  balance     AccountBalance?
+  sessions    Session[]
+
+  @@map("accounts")
 }
 
-model Currencies {
-  id             String            @id @default(uuid())
-  code           String            @unique
-  name           String
-  symbol         String
-  accounts       Account[]
-  instruments    Instruments[]
-  ledger_entries LedgerEntries[]
-  transactions   Transactions[]
-  accountBalances AccountBalances[]
+model Session {
+  id        String   @id @default(uuid())
+  accountId String   @map("account_id")
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  @@map("CURRENCIES")
+  @@index([token])
+  @@map("sessions")
 }
 
-model AssetClasses {
-  id          String        @id @default(uuid())
-  name        String        @unique
+model Order {
+  id                String      @id @default(uuid())
+  accountId         String      @map("account_id")
+  account           Account     @relation(fields: [accountId], references: [id])
+  instrumentId      String      @map("instrument_id")
+  instrument        Instrument  @relation(fields: [instrumentId], references: [id])
+  sideId            Int         @map("side_id") @db.SmallInt
+  side              OrderSide   @relation(fields: [sideId], references: [id])
+  typeId            Int         @map("type_id") @db.SmallInt
+  type              OrderType   @relation(fields: [typeId], references: [id])
+  statusId          Int         @map("status_id") @db.SmallInt
+  status            OrderStatus @relation(fields: [statusId], references: [id])
+  timeInForceId     Int?        @map("time_in_force_id") @db.SmallInt
+  timeInForce       TimeInForceType? @relation(fields: [timeInForceId], references: [id])
+  clientOrderId     String?     @unique @map("client_order_id")
+  price             Decimal?    @db.Decimal(18, 8)
+  quantity          Decimal     @db.Decimal(18, 8)
+  filledQuantity    Decimal     @default(0) @db.Decimal(18, 8) @map("filled_quantity")
+  remainingQuantity Decimal     @default(0) @db.Decimal(18, 8) @map("remaining_quantity")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  executions        Execution[]
+
+  @@map("orders")
+}
+
+model Execution {
+  id                  String     @id @default(uuid())
+  orderId             String     @map("order_id")
+  order               Order      @relation(fields: [orderId], references: [id])
+  instrumentId        String     @map("instrument_id")
+  instrument          Instrument @relation(fields: [instrumentId], references: [id])
+  counterpartyOrderId String?    @map("counterparty_order_id")
+  price               Decimal    @db.Decimal(18, 8)
+  quantity            Decimal    @db.Decimal(18, 8)
+  executedAt          DateTime   @default(now()) @map("executed_at")
+  liquidity           String?
+
+  @@map("executions")
+}
+
+model Position {
+  id           String    @id @default(uuid())
+  accountId    String    @map("account_id")
+  account      Account   @relation(fields: [accountId], references: [id])
+  instrumentId String    @map("instrument_id")
+  instrument   Instrument @relation(fields: [instrumentId], references: [id])
+  quantity     Decimal   @db.Decimal(18, 8)
+  averagePrice Decimal   @db.Decimal(18, 8) @map("average_price")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@unique([accountId, instrumentId], map: "positions_account_instrument_unique")
+  @@map("positions")
+}
+
+model LedgerEntryType {
+  id          Int           @id @default(autoincrement()) @db.SmallInt
+  code        String        @unique
   description String?
-  instruments Instruments[]
-
-  @@map("ASSET_CLASSES")
-}
-
-model Instruments {
-  id             String         @id @default(uuid())
-  symbol         String         @unique
-  name           String
-  asset_class_id String
-  asset_class    AssetClasses   @relation(fields: [asset_class_id], references: [id])
-  lot_size       Decimal
-  tick_size      Decimal
-  currency_id    String
-  currency       Currencies     @relation(fields: [currency_id], references: [id])
-  created_at     DateTime       @default(now())
-  orders         Orders[]
-  executions     Executions[]
-  positions      Positions[]
-  market_quotes  MarketQuotes[]
-
-  @@map("INSTRUMENTS")
-}
-
-model OrderSides {
-  id          Int       @id
-  code        String    @unique
-  description String
-  orders      Orders[]
-
-  @@map("ORDER_SIDES")
-}
-
-model OrderStatuses {
-  id          Int       @id
-  code        String    @unique
-  description String
-  orders      Orders[]
-
-  @@map("ORDER_STATUSES")
-}
-
-model OrderTypes {
-  id          Int       @id
-  code        String    @unique
-  description String
-  orders      Orders[]
-
-  @@map("ORDER_TYPES")
-}
-
-model TimeInForceTypes {
-  id          Int       @id
-  code        String    @unique
-  description String
-  orders      Orders[]
-
-  @@map("TIME_IN_FORCE_TYPES")
-}
-
-model Orders {
-  id                 String        @id @default(uuid())
-  account_id         String
-  account            Account      @relation(fields: [account_id], references: [id])
-  instrument_id      String
-  instrument         Instruments   @relation(fields: [instrument_id], references: [id])
-  side_id            Int
-  side               OrderSides    @relation(fields: [side_id], references: [id])
-  type_id            Int
-  type               OrderTypes    @relation(fields: [type_id], references: [id])
-  status_id          Int
-  status             OrderStatuses @relation(fields: [status_id], references: [id])
-  time_in_force_id   Int
-  time_in_force      TimeInForceTypes @relation(fields: [time_in_force_id], references: [id])
-  client_order_id    String        @unique
-  price              Decimal?
-  quantity           Decimal
-  filled_quantity    Decimal?
-  remaining_quantity Decimal?
-  created_at         DateTime      @default(now())
-  updated_at         DateTime      @updatedAt
-  executions         Executions[]
-
-  @@map("ORDERS")
-}
-
-model Executions {
-  id                   String      @id @default(uuid())
-  order_id             String
-  order                Orders      @relation(fields: [order_id], references: [id])
-  instrument_id        String
-  instrument           Instruments @relation(fields: [instrument_id], references: [id])
-  counterparty_order_id String?
-  price                Decimal
-  quantity             Decimal
-  executed_at          DateTime
-  liquidity            String?
-
-  @@map("EXECUTIONS")
-}
-
-model Positions {
-  id             String      @id @default(uuid())
-  account_id     String
-  account        Account    @relation(fields: [account_id], references: [id])
-  instrument_id  String
-  instrument     Instruments @relation(fields: [instrument_id], references: [id])
-  quantity       Decimal
-  average_price  Decimal
-  updated_at     DateTime    @updatedAt
-
-  @@map("POSITIONS")
-}
-
-model LedgerEntryTypes {
-  id          Int            @id
-  code        String         @unique
-  description String
   category    String?
-  entries     LedgerEntries[]
+  entries     LedgerEntry[]
 
-  @@map("LEDGER_ENTRY_TYPES")
+  @@map("ledger_entry_types")
 }
 
-model LedgerEntries {
-  id              String            @id @default(uuid())
-  account_id      String
-  account         Account          @relation(fields: [account_id], references: [id])
-  entry_type_id   Int
-  entry_type      LedgerEntryTypes  @relation(fields: [entry_type_id], references: [id])
-  amount          Decimal
-  currency_id     String
-  currency        Currencies        @relation(fields: [currency_id], references: [id])
-  reference_id    String?
-  reference_table String?
-  created_at      DateTime          @default(now())
+model LedgerEntry {
+  id           String          @id @default(uuid())
+  accountId    String          @map("account_id")
+  account      Account         @relation(fields: [accountId], references: [id])
+  entryTypeId  Int             @map("entry_type_id") @db.SmallInt
+  entryType    LedgerEntryType @relation(fields: [entryTypeId], references: [id])
+  amount       Decimal         @db.Decimal(18, 8)
+  currencyId   String          @map("currency_id")
+  currency     Currency        @relation(fields: [currencyId], references: [id])
+  referenceId  String?         @map("reference_id")
+  referenceTable String?       @map("reference_table")
+  createdAt    DateTime        @default(now()) @map("created_at")
 
-  @@map("LEDGER_ENTRIES")
+  @@map("ledger_entries")
 }
 
-model AccountBalances {
-  account_id  String   @id
-  account     Account @relation(fields: [account_id], references: [id])
-  available   Decimal
-  reserved    Decimal
-  total       Decimal
-  currency_id String
-  currency    Currencies @relation(fields: [currency_id], references: [id])
-  updated_at  DateTime   @updatedAt
+model AccountBalance {
+  accountId String   @id @map("account_id")
+  account   Account  @relation(fields: [accountId], references: [id])
+  available Decimal  @db.Decimal(18, 8)
+  reserved  Decimal  @db.Decimal(18, 8)
+  total     Decimal  @db.Decimal(18, 8)
+  currencyId String  @map("currency_id")
+  currency   Currency @relation(fields: [currencyId], references: [id])
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  @@map("ACCOUNT_BALANCES")
+  @@map("account_balances")
 }
 
-model MarketQuotes {
-  id            BigInt      @id @default(autoincrement())
-  instrument_id String
-  instrument    Instruments  @relation(fields: [instrument_id], references: [id])
-  bid_price     Decimal?
-  ask_price     Decimal?
-  last_price    Decimal?
-  volume        Decimal?
-  ts            DateTime
+model MarketQuote {
+  id           BigInt     @id @default(autoincrement())
+  instrumentId String     @map("instrument_id")
+  instrument   Instrument @relation(fields: [instrumentId], references: [id])
+  bidPrice     Decimal?   @db.Decimal(18, 8) @map("bid_price")
+  askPrice     Decimal?   @db.Decimal(18, 8) @map("ask_price")
+  lastPrice    Decimal?   @db.Decimal(18, 8) @map("last_price")
+  volume       Decimal?   @db.Decimal(18, 8)
+  timestamp    DateTime   @map("ts")
 
-  @@map("MARKET_QUOTES")
+  @@map("market_quotes")
 }
 
-model TransactionTypes {
-  id          Int           @id
+model TransactionType {
+  id          Int           @id @default(autoincrement()) @db.SmallInt
   code        String        @unique
-  description String
+  description String?
   category    String?
-  transactions Transactions[]
+  transactions Transaction[]
 
-  @@map("TRANSACTION_TYPES")
+  @@map("transaction_types")
 }
 
-model TransactionStatuses {
-  id          Int           @id
+model TransactionStatus {
+  id          Int           @id @default(autoincrement()) @db.SmallInt
   code        String        @unique
-  description String
-  transactions Transactions[]
+  description String?
+  transactions Transaction[]
 
-  @@map("TRANSACTION_STATUSES")
+  @@map("transaction_statuses")
 }
 
-model Transactions {
-  id            String               @id @default(uuid())
-  account_id    String
-  account       Account              @relation(fields: [account_id], references: [id])
-  tx_type_id    Int
-  tx_type       TransactionTypes     @relation(fields: [tx_type_id], references: [id])
-  status_id     Int
-  status        TransactionStatuses  @relation(fields: [status_id], references: [id])
-  amount        Decimal
-  currency_id   String
-  currency      Currencies           @relation(fields: [currency_id], references: [id])
-  external_ref  String?
-  created_at    DateTime             @default(now())
-  updated_at    DateTime             @updatedAt
+model Transaction {
+  id         String            @id @default(uuid())
+  accountId  String            @map("account_id")
+  account    Account           @relation(fields: [accountId], references: [id])
+  txTypeId   Int               @map("tx_type_id") @db.SmallInt
+  txType     TransactionType   @relation(fields: [txTypeId], references: [id])
+  statusId   Int               @map("status_id") @db.SmallInt
+  status     TransactionStatus @relation(fields: [statusId], references: [id])
+  amount     Decimal           @db.Decimal(18, 8)
+  currencyId String            @map("currency_id")
+  currency   Currency          @relation(fields: [currencyId], references: [id])
+  externalRef String?          @map("external_ref")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
 
-  @@map("TRANSACTIONS")
+  @@map("transactions")
 }
 
-model ActorTypes {
-  id          Int        @id
+model ActorType {
+  id          Int        @id @default(autoincrement()) @db.SmallInt
   code        String     @unique
-  description String
-  audit_logs  AuditLog[]
+  description String?
+  auditLogs   AuditLog[] @relation("ActorTypeToAuditLog")
 
-  @@map("ACTOR_TYPES")
+  @@map("actor_types")
 }
 
-model ActionTypes {
-  id          Int        @id
+model ActionType {
+  id          Int        @id @default(autoincrement()) @db.SmallInt
   code        String     @unique
-  description String
+  description String?
   category    String?
-  audit_logs  AuditLog[]
+  auditLogs   AuditLog[] @relation("ActionTypeToAuditLog")
 
-  @@map("ACTION_TYPES")
+  @@map("action_types")
 }
 
-model ObjectTypes {
-  id          Int        @id
+model ObjectType {
+  id          Int        @id @default(autoincrement()) @db.SmallInt
   code        String     @unique
-  description String
-  audit_logs  AuditLog[]
+  description String?
+  auditLogs   AuditLog[] @relation("ObjectTypeToAuditLog")
 
-  @@map("OBJECT_TYPES")
+  @@map("object_types")
 }
 
 model AuditLog {
-  id              String       @id @default(uuid())
-  actor_id        String?
-  actor_type_id   Int
-  actor_type      ActorTypes   @relation(fields: [actor_type_id], references: [id])
-  action_id       Int
-  action          ActionTypes  @relation(fields: [action_id], references: [id])
-  object_type_id  Int
-  object_type     ObjectTypes  @relation(fields: [object_type_id], references: [id])
-  object_id       String?
-  old_values      Json?
-  new_values      Json?
-  created_at      DateTime     @default(now())
+  id             String     @id @default(uuid())
+  actorId        String?    @map("actor_id")
+  actorTypeId    Int?       @map("actor_type_id") @db.SmallInt
+  actorType      ActorType? @relation("ActorTypeToAuditLog", fields: [actorTypeId], references: [id])
+  actionId       Int?       @map("action_id") @db.SmallInt
+  action         ActionType? @relation("ActionTypeToAuditLog", fields: [actionId], references: [id])
+  objectTypeId   Int?       @map("object_type_id") @db.SmallInt
+  objectType     ObjectType? @relation("ObjectTypeToAuditLog", fields: [objectTypeId], references: [id])
+  objectId       String?    @map("object_id")
+  oldValues      Json?      @map("old_values")
+  newValues      Json?      @map("new_values")
+  createdAt      DateTime   @default(now()) @map("created_at")
 
-  @@map("AUDIT_LOG")
+  @@map("audit_log")
 }

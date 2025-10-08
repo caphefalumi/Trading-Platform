@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../utils/prisma.js'
+import 'crypto'
 import { Prisma } from '@prisma/client'
 import { createSession, deleteSession } from '../utils/session.js'
 

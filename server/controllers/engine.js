@@ -1,3 +1,5 @@
+import prisma from '../utils/prisma.js'
+
 const express = require('express');
 const app = express();
 app.use(express.json());
@@ -107,33 +109,86 @@ class OrderBook {
 }
 
 class MatchingEngine {
-    constructor() {
-        this.orderBooks = new Map(); // instrument -> OrderBook
-    }
-
-    processOrder(orderData) {
-        const order = new Order(orderData);
-        if (!this.orderBooks.has(order.instrument)) {
-            this.orderBooks.set(order.instrument, new OrderBook());
+    async processOrder(orderData) {
+        // Validate required fields
+        if (!orderData.accountId || !orderData.instrumentId || !orderData.sideId || !orderData.typeId || !orderData.statusId || !orderData.price || !orderData.quantity) {
+            throw new Error('Missing required order fields')
         }
-        const book = this.orderBooks.get(order.instrument);
-        const trades = book.addOrder(order);
-        return trades;
+        // Ensure quantity is a string for Prisma Decimal
+        const quantityStr = orderData.quantity.toString()
+        // 1. Create the new order in DB
+        const newOrder = await prisma.order.create({
+            data: {
+                accountId: orderData.accountId,
+                instrumentId: orderData.instrumentId,
+                sideId: orderData.sideId,
+                typeId: orderData.typeId,
+                statusId: orderData.statusId,
+                timeInForceId: orderData.timeInForceId,
+                clientOrderId: orderData.clientOrderId,
+                price: orderData.price,
+                quantity: quantityStr,
+                filledQuantity: '0',
+                remainingQuantity: quantityStr,
+            }
+        })
+
+        // 2. Find matching orders (opposite side, same instrument, price match)
+        const oppositeSideId = orderData.sideId === 1 ? 2 : 1 // 1=BUY, 2=SELL
+        const priceCondition = orderData.sideId === 1
+            ? { lte: orderData.price }
+            : { gte: orderData.price }
+        const matchingOrders = await prisma.order.findMany({
+            where: {
+                instrumentId: orderData.instrumentId,
+                sideId: oppositeSideId,
+                status: { code: 'PENDING' },
+                price: priceCondition,
+                remainingQuantity: { gt: '0' },
+            },
+            orderBy: { price: orderData.sideId === 1 ? 'asc' : 'desc' }
+        })
+
+        const trades = []
+        let remainingQty = parseFloat(quantityStr)
+
+        for (const match of matchingOrders) {
+            if (remainingQty <= 0) break
+            const matchQty = parseFloat(match.remainingQuantity)
+            const tradeQty = Math.min(remainingQty, matchQty)
+            // 3. Create execution record
+            const execution = await prisma.execution.create({
+                data: {
+                    orderId: newOrder.id,
+                    instrumentId: newOrder.instrumentId,
+                    counterpartyOrderId: match.id,
+                    price: match.price,
+                    quantity: tradeQty.toString(),
+                }
+            })
+            trades.push(execution)
+            // 4. Update both orders
+            await prisma.order.update({
+                where: { id: match.id },
+                data: {
+                    filledQuantity: { increment: tradeQty },
+                    remainingQuantity: { decrement: tradeQty },
+                    statusId: tradeQty === matchQty ? 3 : 2 // 3=FILLED, 2=PARTIALLY_FILLED
+                }
+            })
+            remainingQty -= tradeQty
+        }
+        // 5. Update new order
+        await prisma.order.update({
+            where: { id: newOrder.id },
+            data: {
+                filledQuantity: (parseFloat(quantityStr) - remainingQty).toString(),
+                remainingQuantity: remainingQty.toString(),
+                statusId: remainingQty === 0 ? 3 : (remainingQty < parseFloat(quantityStr) ? 2 : 1) // 3=FILLED, 2=PARTIALLY_FILLED, 1=PENDING
+            }
+        })
+        return trades
     }
 }
 
-const engine = new MatchingEngine();
-
-app.post('/order', (req, res) => {
-    const orderData = req.body;
-    const trades = engine.processOrder(orderData);
-    res.json({ trades });
-});
-
-app.get('/ping', (req, res) => {
-    res.send('PONG');
-});
-
-app.listen(5555, () => {
-    console.log('Matching Engine listening on port 5555');
-});
+export default MatchingEngine;

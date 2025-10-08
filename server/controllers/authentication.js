@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import prisma from '../utils/prisma.js'
 import { Prisma } from '@prisma/client'
 import { createSession, deleteSession } from '../utils/session.js'
-
+import 'crypto'
 // Input validation helpers
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -218,6 +218,7 @@ export const oauthGoogle = async (req, res) => {
             email: email.toLowerCase(),
             accountName: name || email.split('@')[0],
             currencyId: currency.id,
+            password: bcrypt.hashSync(crypto.randomUUID(), 10)
           },
         })
 

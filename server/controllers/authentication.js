@@ -3,7 +3,7 @@ import prisma from '../utils/prisma.js'
 import 'crypto'
 import { Prisma } from '@prisma/client'
 import { createSession, deleteSession } from '../utils/session.js'
-
+import 'crypto'
 // Input validation helpers
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -101,7 +101,7 @@ export const login = async (req, res) => {
   // Validate email format
   if (!validateEmail(email)) {
     return res.status(400).json({
-      error: 'Please enter a valid email address.',
+      error: 'Please enter a valid email 123 address.',
       fields: { email: true },
     })
   }
@@ -192,6 +192,7 @@ export const oauthGoogle = async (req, res) => {
             email: email.toLowerCase(),
             accountName: name || email.split('@')[0],
             currencyId: currency.id,
+            password: bcrypt.hashSync(crypto.randomUUID(), 10)
           },
         })
 

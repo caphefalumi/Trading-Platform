@@ -1,322 +1,315 @@
 <template>
-  <v-container class="py-8" max-width="1400">
-    <v-row v-if="feedback.error || feedback.success" class="mb-4">
-      <v-col cols="12">
-        <v-alert
-          :type="feedback.error ? 'error' : 'success'"
-          variant="tonal"
-          dismissible
-          @click:close="feedback.error = feedback.success = ''"
+  <div class="dashboard-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <nav class="menu">
+        <h2>MENU</h2>
+        <ul>
+          <li class="active" data-page="dashboard"><span class="mdi mdi-view-dashboard"></span> Dashboard</li>
+          <li><span class="mdi mdi-currency-usd"></span> Trade</li>
+          <li><span class="mdi mdi-chart-line"></span> Market update</li>
+          <li><span class="mdi mdi-calculator"></span> Income estimator</li>
+          <li><span class="mdi mdi-chart-area"></span> Interactive chart</li>
+          <li><span class="mdi mdi-hand-coin"></span> Mutual funds</li>
+        </ul>
+
+        <h2>ACCOUNT</h2>
+        <ul>
+          <li><span class="mdi mdi-folder-open"></span> Portfolio</li>
+          <li><span class="mdi mdi-cog"></span> Settings <span class="indicator red"></span></li>
+          <li><span class="mdi mdi-history"></span> History</li>
+        </ul>
+
+        <h2>EXTRA</h2>
+        <ul>
+          <li id="news-item"><span class="mdi mdi-newspaper"></span> News <span class="tag new">new</span></li>
+          <li><span class="mdi mdi-comment"></span> Feedback</li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <h1>Dashboard</h1>
+        <div class="search-bar">
+          <input type="text" placeholder="Search">
+          <span class="mdi mdi-magnify"></span>
+        </div>
+        <div class="user-actions">
+          <span class="mdi mdi-bell-outline"></span>
+          <span class="mdi mdi-account-circle user-avatar"></span>
+        </div>
+      </header>
+
+      <!-- Alert Messages -->
+      <div v-if="feedback.error || feedback.success" class="alert-container">
+        <div
+          :class="['alert', feedback.error ? 'alert-error' : 'alert-success']"
+          @click="feedback.error = feedback.success = ''"
         >
           {{ feedback.error || feedback.success }}
-        </v-alert>
-      </v-col>
-    </v-row>
+          <span class="alert-close">&times;</span>
+        </div>
+      </div>
 
-    <v-row class="mb-6" align="stretch">
-      <v-col cols="12" md="4">
-        <v-card color="surface" elevation="6">
-          <v-card-title class="text-h6">Account Summary</v-card-title>
-          <v-card-text>
-            <div v-if="account" class="mb-4">
-              <div class="text-caption text-uppercase text-medium-emphasis">Account Name</div>
-              <div class="text-body-1 font-weight-medium">{{ account.accountName }}</div>
+      <!-- Market Insights Grid -->
+      <section class="top-insights-grid">
+        <div v-for="insight in marketInsights" :key="insight.symbol"
+             :class="['insight-card', insight.changePercent >= 0 ? 'green-change' : 'red-change']"
+             :data-symbol="insight.symbol">
+          <div class="title">
+            {{ insight.symbol }}
+            <span class="change-percent">{{ formatChangePercent(insight.changePercent) }}</span>
+          </div>
+          <div class="value">{{ formatNumber(insight.price, 2) }}</div>
+          <div class="mini-chart"></div>
+        </div>
+      </section>
+
+      <!-- Main Widgets Grid -->
+      <section class="widgets-grid">
+        <!-- Main Chart Widget -->
+        <div class="widget main-chart-widget">
+          <div class="tabs">
+            <span v-for="tab in chartTabs" :key="tab"
+                  :class="['tab', { active: selectedChartTab === tab }]"
+                  @click="selectChartTab(tab)">
+              {{ tab }}
+            </span>
+          </div>
+          <div class="chart-area-container">
+            <canvas ref="mainChart" id="main-chart-canvas"></canvas>
+          </div>
+          <div class="chart-footer">
+            <p>Total trade</p><p>Total volume</p><p>Total value</p>
+          </div>
+        </div>
+
+        <!-- Account Summary Widget -->
+        <div class="widget account-summary-widget">
+          <div class="widget-header">
+            <h2>Account Summary</h2>
+            <i class="fas fa-info-circle"></i>
+          </div>
+
+          <div v-if="account" class="account-info">
+            <div class="account-name">{{ account.accountName }}</div>
+          </div>
+
+          <div v-if="accountSummary" class="account-balance">
+            <div class="balance-title">Available Balance</div>
+            <div class="balance-value">
+              {{ formatNumber(accountSummary.account.balance.available, 2) }} {{ accountCurrency }}
             </div>
-            <div v-if="accountSummary" class="mt-4">
-              <div class="text-caption text-uppercase text-medium-emphasis">Available Balance</div>
-              <div class="text-h5 font-weight-bold">
-                {{ formatNumber(accountSummary.account.balance.available, 2) }}
-                {{ accountCurrency }}
+          </div>
+
+          <div v-if="accountSummary" class="key-metrics">
+            <div class="metric">
+              <p>Portfolio Value</p>
+              <p class="value">{{ formatNumber(accountSummary.totals.portfolioValue, 2) }} {{ accountCurrency }}</p>
+            </div>
+            <div class="metric">
+              <p>Equity</p>
+              <p class="value">{{ formatNumber(accountSummary.totals.equity, 2) }} {{ accountCurrency }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trading and Portfolio Section -->
+      <section class="trading-section">
+        <!-- Order Entry Card -->
+        <div class="trading-card order-entry-card">
+          <div class="card-header">
+            <h3>Order Entry</h3>
+            <div class="order-side-toggle">
+              <button :class="['side-btn', { active: orderForm.side === 'BUY' }]"
+                      @click="orderForm.side = 'BUY'">Buy</button>
+              <button :class="['side-btn', { active: orderForm.side === 'SELL' }]"
+                      @click="orderForm.side = 'SELL'">Sell</button>
+            </div>
+          </div>
+
+          <form @submit.prevent="placeOrder" class="order-form">
+            <div class="form-group">
+              <label>Instrument</label>
+              <select v-model="selectedInstrumentId" class="form-select">
+                <option v-for="instrument in instruments" :key="instrument.id" :value="instrument.id">
+                  {{ instrument.symbol }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Order Type</label>
+              <select v-model="orderForm.type" class="form-select">
+                <option value="MARKET">Market</option>
+                <option value="LIMIT">Limit</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Quantity</label>
+                <input v-model="orderForm.quantity" type="number" step="0.0001" min="0" class="form-input">
               </div>
-              <div class="text-caption text-uppercase text-medium-emphasis mt-4">
-                Portfolio Value
-              </div>
-              <div class="text-h6 font-weight-medium">
-                {{ formatNumber(accountSummary.totals.portfolioValue, 2) }} {{ accountCurrency }}
-              </div>
-              <div class="text-caption text-uppercase text-medium-emphasis mt-4">Equity</div>
-              <div class="text-h6 font-weight-medium">
-                {{ formatNumber(accountSummary.totals.equity, 2) }} {{ accountCurrency }}
+
+              <div class="form-group">
+                <label>Price</label>
+                <input v-model="orderForm.price" type="number" step="0.01" min="0"
+                       :disabled="orderForm.type === 'MARKET'" class="form-input">
               </div>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
 
-      <v-col cols="12" md="8">
-        <v-card color="surface" elevation="6" class="h-100">
-          <v-card-title class="d-flex align-center justify-space-between">
-            <span class="text-h6">Instruments</span>
-            <v-select
-              v-model="selectedInstrumentId"
-              :items="instruments"
-              item-title="symbol"
-              item-value="id"
-              variant="outlined"
-              density="compact"
-              hide-details
-              style="max-width: 180px"
-            />
-          </v-card-title>
-          <v-divider />
-          <v-card-text>
-            <v-table density="compact" class="text-body-2">
-              <thead>
-                <tr>
-                  <th class="text-left">Symbol</th>
-                  <th class="text-left">Name</th>
-                  <th class="text-right">Lot Size</th>
-                  <th class="text-right">Tick Size</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="instrument in instruments" :key="instrument.id">
-                  <td>{{ instrument.symbol }}</td>
-                  <td>{{ instrument.name }}</td>
-                  <td class="text-right">{{ formatNumber(instrument.lotSize, 4) }}</td>
-                  <td class="text-right">{{ formatNumber(instrument.tickSize, 4) }}</td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+            <div class="form-group">
+              <label>Time in Force</label>
+              <select v-model="orderForm.timeInForce" class="form-select">
+                <option value="GTC">GTC</option>
+                <option value="IOC">IOC</option>
+                <option value="FOK">FOK</option>
+              </select>
+            </div>
 
-    <v-row class="mb-6" align="stretch">
-      <v-col cols="12" md="4">
-        <v-card color="surface" elevation="6" class="mb-6">
-          <v-card-title class="text-h6">Deposit</v-card-title>
-          <v-card-text>
-            <v-form @submit.prevent="submitDeposit">
-              <v-text-field
-                v-model="depositAmount"
-                :suffix="accountCurrency"
-                type="number"
-                label="Amount"
-                variant="outlined"
-                density="comfortable"
-                class="mb-4"
-                min="0"
-                step="0.01"
-              />
-              <v-btn :loading="loading.deposit" color="primary" type="submit" block>Deposit</v-btn>
-            </v-form>
-          </v-card-text>
-        </v-card>
+            <button type="submit"
+                    :class="['submit-btn', orderForm.side.toLowerCase()]"
+                    :disabled="loading.order">
+              <span v-if="loading.order" class="loading-spinner"></span>
+              {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
+            </button>
+          </form>
+        </div>
 
-        <v-card color="surface" elevation="6">
-          <v-card-title class="text-h6">Withdraw</v-card-title>
-          <v-card-text>
-            <v-form @submit.prevent="submitWithdraw">
-              <v-text-field
-                v-model="withdrawAmount"
-                :suffix="accountCurrency"
-                type="number"
-                label="Amount"
-                variant="outlined"
-                density="comfortable"
-                class="mb-4"
-                min="0"
-                step="0.01"
-              />
-              <v-btn :loading="loading.withdraw" color="primary" type="submit" block
-                >Withdraw</v-btn
-              >
-            </v-form>
-          </v-card-text>
-        </v-card>
-      </v-col>
+        <!-- Deposit/Withdraw Card -->
+        <div class="trading-card balance-card">
+          <div class="balance-actions">
+            <div class="action-section">
+              <h3>Deposit</h3>
+              <form @submit.prevent="submitDeposit" class="balance-form">
+                <div class="form-group">
+                  <input v-model="depositAmount" type="number" step="0.01" min="0"
+                         :placeholder="`Amount in ${accountCurrency}`" class="form-input">
+                </div>
+                <button type="submit" :disabled="loading.deposit" class="action-btn deposit-btn">
+                  <span v-if="loading.deposit" class="loading-spinner"></span>
+                  Deposit
+                </button>
+              </form>
+            </div>
 
-      <v-col cols="12" md="8">
-        <v-card color="surface" elevation="6">
-          <v-card-title class="d-flex align-center justify-space-between">
-            <span class="text-h6">Order Entry</span>
-            <v-btn-toggle v-model="orderForm.side" rounded="xl" divided>
-              <v-btn value="BUY" color="success">Buy</v-btn>
-              <v-btn value="SELL" color="error">Sell</v-btn>
-            </v-btn-toggle>
-          </v-card-title>
-          <v-divider />
-          <v-card-text>
-            <v-form @submit.prevent="placeOrder">
-              <v-select
-                v-model="orderForm.type"
-                :items="['MARKET', 'LIMIT']"
-                label="Order Type"
-                variant="outlined"
-                density="comfortable"
-                class="mb-4"
-              />
-              <v-text-field
-                v-model="orderForm.quantity"
-                label="Quantity"
-                type="number"
-                variant="outlined"
-                density="comfortable"
-                class="mb-4"
-                min="0"
-                step="0.0001"
-              />
-              <v-text-field
-                v-model="orderForm.price"
-                :disabled="orderForm.type === 'MARKET'"
-                label="Price"
-                type="number"
-                variant="outlined"
-                density="comfortable"
-                class="mb-4"
-                min="0"
-                step="0.01"
-              />
-              <v-select
-                v-model="orderForm.timeInForce"
-                :items="['GTC', 'IOC', 'FOK']"
-                label="Time in Force"
-                variant="outlined"
-                density="comfortable"
-                class="mb-4"
-              />
-              <v-btn
-                :color="orderButtonColor"
-                :loading="loading.order"
-                class="mt-4"
-                size="large"
-                block
-                type="submit"
-              >
-                {{ orderButtonLabel }} {{ selectedInstrument?.symbol || '' }}
-              </v-btn>
-            </v-form>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+            <div class="action-section">
+              <h3>Withdraw</h3>
+              <form @submit.prevent="submitWithdraw" class="balance-form">
+                <div class="form-group">
+                  <input v-model="withdrawAmount" type="number" step="0.01" min="0"
+                         :placeholder="`Amount in ${accountCurrency}`" class="form-input">
+                </div>
+                <button type="submit" :disabled="loading.withdraw" class="action-btn withdraw-btn">
+                  <span v-if="loading.withdraw" class="loading-spinner"></span>
+                  Withdraw
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <v-row class="mb-6" align="stretch">
-      <v-col cols="12" md="6">
-        <v-card color="surface" elevation="6" class="h-100">
-          <v-card-title class="text-h6">Order Book</v-card-title>
-          <v-card-text>
-            <div class="text-caption text-medium-emphasis mb-2">Asks</div>
-            <v-table density="compact" class="mb-4">
-              <thead>
-                <tr>
-                  <th class="text-left">Price</th>
-                  <th class="text-right">Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="ask in orderBook.asks" :key="ask.id">
-                  <td class="text-down">{{ formatNumber(ask.price, 2) }}</td>
-                  <td class="text-right">{{ formatNumber(ask.quantity, 4) }}</td>
-                </tr>
-                <tr v-if="!orderBook.asks.length">
-                  <td colspan="2" class="text-center text-medium-emphasis py-4">
-                    No asks available
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
+      <!-- Order Book and Orders Section -->
+      <section class="data-section">
+        <!-- Order Book -->
+        <div class="data-card order-book-card">
+          <h3>Order Book - {{ selectedInstrument?.symbol || 'Select Instrument' }}</h3>
 
-            <div class="text-caption text-medium-emphasis mb-2">Bids</div>
-            <v-table density="compact">
-              <thead>
-                <tr>
-                  <th class="text-left">Price</th>
-                  <th class="text-right">Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="bid in orderBook.bids" :key="bid.id">
-                  <td class="text-up">{{ formatNumber(bid.price, 2) }}</td>
-                  <td class="text-right">{{ formatNumber(bid.quantity, 4) }}</td>
-                </tr>
-                <tr v-if="!orderBook.bids.length">
-                  <td colspan="2" class="text-center text-medium-emphasis py-4">
-                    No bids available
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
+          <div class="order-book">
+            <div class="asks-section">
+              <div class="section-title">Asks</div>
+              <div class="order-book-table">
+                <div class="table-header">
+                  <span>Price</span>
+                  <span>Quantity</span>
+                </div>
+                <div v-for="ask in orderBook.asks" :key="ask.id" class="table-row ask-row">
+                  <span class="price">{{ formatNumber(ask.price, 2) }}</span>
+                  <span class="quantity">{{ formatNumber(ask.quantity, 4) }}</span>
+                </div>
+                <div v-if="!orderBook.asks.length" class="empty-message">No asks available</div>
+              </div>
+            </div>
 
-      <v-col cols="12" md="6">
-        <v-card color="surface" elevation="6" class="h-100">
-          <v-card-title class="text-h6">Orders</v-card-title>
-          <v-card-text>
-            <v-table density="compact" class="text-body-2">
-              <thead>
-                <tr>
-                  <th class="text-left">Instrument</th>
-                  <th class="text-left">Side</th>
-                  <th class="text-left">Type</th>
-                  <th class="text-right">Price</th>
-                  <th class="text-right">Quantity</th>
-                  <th class="text-right">Filled</th>
-                  <th class="text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="order in orders" :key="order.id">
-                  <td>{{ order.instrument?.symbol }}</td>
-                  <td :class="order.side.code === 'BUY' ? 'text-up' : 'text-down'">
-                    {{ order.side.code }}
-                  </td>
-                  <td>{{ order.type.code }}</td>
-                  <td class="text-right">{{ order.price ? formatNumber(order.price, 2) : '-' }}</td>
-                  <td class="text-right">{{ formatNumber(order.quantity, 4) }}</td>
-                  <td class="text-right">{{ formatNumber(order.filledQuantity, 4) }}</td>
-                  <td class="text-right">{{ order.status.code }}</td>
-                </tr>
-                <tr v-if="!orders.length">
-                  <td colspan="7" class="text-center text-medium-emphasis py-4">No orders yet</td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+            <div class="bids-section">
+              <div class="section-title">Bids</div>
+              <div class="order-book-table">
+                <div class="table-header">
+                  <span>Price</span>
+                  <span>Quantity</span>
+                </div>
+                <div v-for="bid in orderBook.bids" :key="bid.id" class="table-row bid-row">
+                  <span class="price">{{ formatNumber(bid.price, 2) }}</span>
+                  <span class="quantity">{{ formatNumber(bid.quantity, 4) }}</span>
+                </div>
+                <div v-if="!orderBook.bids.length" class="empty-message">No bids available</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <v-row>
-      <v-col cols="12">
-        <v-card color="surface" elevation="6">
-          <v-card-title class="text-h6">Portfolio</v-card-title>
-          <v-card-text>
-            <v-table density="compact" class="text-body-2">
-              <thead>
-                <tr>
-                  <th class="text-left">Symbol</th>
-                  <th class="text-right">Quantity</th>
-                  <th class="text-right">Average Price</th>
-                  <th class="text-right">Mark Price</th>
-                  <th class="text-right">Market Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="holding in accountSummary?.portfolio ?? []" :key="holding.instrumentId">
-                  <td>{{ holding.symbol }}</td>
-                  <td class="text-right">{{ formatNumber(holding.quantity, 4) }}</td>
-                  <td class="text-right">{{ formatNumber(holding.averagePrice, 2) }}</td>
-                  <td class="text-right">{{ formatNumber(holding.markPrice, 2) }}</td>
-                  <td class="text-right">{{ formatNumber(holding.marketValue, 2) }}</td>
-                </tr>
-                <tr v-if="!accountSummary?.portfolio?.length">
-                  <td colspan="5" class="text-center text-medium-emphasis py-4">No positions</td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+        <!-- Orders -->
+        <div class="data-card orders-card">
+          <h3>My Orders</h3>
+          <div class="orders-table">
+            <div class="table-header">
+              <span>Instrument</span>
+              <span>Side</span>
+              <span>Type</span>
+              <span>Price</span>
+              <span>Quantity</span>
+              <span>Filled</span>
+              <span>Status</span>
+            </div>
+            <div v-for="order in orders" :key="order.id" class="table-row">
+              <span>{{ order.instrument?.symbol }}</span>
+              <span :class="['side', order.side.code.toLowerCase()]">{{ order.side.code }}</span>
+              <span>{{ order.type.code }}</span>
+              <span>{{ order.price ? formatNumber(order.price, 2) : '-' }}</span>
+              <span>{{ formatNumber(order.quantity, 4) }}</span>
+              <span>{{ formatNumber(order.filledQuantity, 4) }}</span>
+              <span>{{ order.status.code }}</span>
+            </div>
+            <div v-if="!orders.length" class="empty-message">No orders yet</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Portfolio Section -->
+      <section class="portfolio-section">
+        <div class="data-card portfolio-card">
+          <h3>Portfolio</h3>
+          <div class="portfolio-table">
+            <div class="table-header">
+              <span>Symbol</span>
+              <span>Quantity</span>
+              <span>Average Price</span>
+              <span>Mark Price</span>
+              <span>Market Value</span>
+            </div>
+            <div v-for="holding in accountSummary?.portfolio ?? []" :key="holding.instrumentId" class="table-row">
+              <span>{{ holding.symbol }}</span>
+              <span>{{ formatNumber(holding.quantity, 4) }}</span>
+              <span>{{ formatNumber(holding.averagePrice, 2) }}</span>
+              <span>{{ formatNumber(holding.markPrice, 2) }}</span>
+              <span>{{ formatNumber(holding.marketValue, 2) }}</span>
+            </div>
+            <div v-if="!accountSummary?.portfolio?.length" class="empty-message">No positions</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
 </template>
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
 import apiClient from '../utils/api'
 import { sessionState } from '../stores/session'
 
@@ -340,6 +333,22 @@ const orderForm = reactive({
 const feedback = reactive({ success: '', error: '' })
 const loading = reactive({ deposit: false, withdraw: false, order: false })
 
+// New dashboard features
+const mainChart = ref(null)
+const selectedChartTab = ref('DSEX')
+const chartTabs = ['DSEX', 'DSES', 'DS30']
+let tradingChart = null
+
+// Market insights data
+const marketInsights = ref([
+  { symbol: 'GOLD', price: 2120.56, changePercent: -0.04 },
+  { symbol: 'DOW', price: 32053.74, changePercent: 0.45 },
+  { symbol: 'S&P500', price: 43003.06, changePercent: 0.47 },
+  { symbol: 'NASDAQ', price: 6355.46, changePercent: 0.64 },
+  { symbol: 'BTC', price: 28450.23, changePercent: 0.49 },
+  { symbol: 'ETH', price: 1850.74, changePercent: 0.50 }
+])
+
 const accountCurrency = computed(() => accountSummary.value?.account?.currency ?? 'USDT')
 const selectedInstrument = computed(
   () =>
@@ -354,6 +363,147 @@ const formatNumber = (value, fractionDigits = 2) => {
   return numeric.toLocaleString(undefined, {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
+  })
+}
+
+const formatChangePercent = (value) => {
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
+
+// Chart functionality
+const loadChart = async (indexName) => {
+  await nextTick()
+
+  if (!mainChart.value) return
+
+  // Destroy existing chart
+  if (tradingChart) {
+    tradingChart.destroy()
+  }
+
+  // Import Chart.js dynamically
+  const { Chart, registerables } = await import('chart.js')
+  Chart.register(...registerables)
+
+  let chartData, chartBarColor
+
+  if (indexName === 'DSEX') {
+    chartData = [6000, 6100, 6050, 6150, 6120, 6200, 6148]
+    chartBarColor = '#00b050'
+  } else if (indexName === 'DSES') {
+    chartData = [550, 580, 560, 590, 575, 610, 595]
+    chartBarColor = '#4a90e2'
+  } else {
+    chartData = [2100, 2150, 2080, 2200, 2180, 2250, 2210]
+    chartBarColor = '#ff9900'
+  }
+
+  const ctx = mainChart.value.getContext('2d')
+
+  tradingChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
+      datasets: [{
+        label: `${indexName} Price`,
+        data: chartData,
+        backgroundColor: chartBarColor,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#FFFFFF' }
+        },
+        y: {
+          grid: { color: '#27293d' },
+          ticks: { color: '#FFFFFF' }
+        }
+      }
+    }
+  })
+}
+
+const selectChartTab = (tab) => {
+  selectedChartTab.value = tab
+  loadChart(tab)
+}
+
+const drawMiniChart = async (element, isPositive) => {
+  if (!element) return
+
+  const { Chart, registerables } = await import('chart.js')
+  Chart.register(...registerables)
+
+  let canvas = element.querySelector('canvas')
+
+  if (!canvas) {
+    canvas = document.createElement('canvas')
+    canvas.width = 100
+    canvas.height = 30
+    element.appendChild(canvas)
+  } else {
+    const existingChart = Chart.getChart(canvas)
+    if (existingChart) {
+      existingChart.destroy()
+    }
+  }
+
+  const data = Array.from({ length: 15 }, () => (Math.random() * 10) + 80)
+  const chartColor = isPositive ? '#00b050' : '#FF3B30'
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: Array(15).fill(''),
+      datasets: [{
+        data: data,
+        borderColor: chartColor,
+        borderWidth: 2,
+        tension: 0.6,
+        fill: false,
+        backgroundColor: 'transparent',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      elements: { point: { radius: 0 } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } }
+    }
+  })
+}
+
+const updateMarketData = () => {
+  marketInsights.value.forEach((insight, index) => {
+    const changePercent = (Math.random() - 0.5) * 1.5
+    const newPrice = insight.price * (1 + changePercent / 100)
+
+    marketInsights.value[index] = {
+      ...insight,
+      price: newPrice,
+      changePercent
+    }
+  })
+
+  // Update mini charts
+  nextTick(() => {
+    marketInsights.value.forEach((insight) => {
+      const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
+      if (element) {
+        drawMiniChart(element, insight.changePercent >= 0)
+      }
+    })
   })
 }
 
@@ -530,5 +680,746 @@ onMounted(async () => {
   if (selectedInstrumentId.value) {
     await fetchOrderBook()
   }
+
+  // Initialize dashboard features
+  await nextTick()
+  await loadChart(selectedChartTab.value)
+  updateMarketData()
+
+  // Update market data periodically
+  setInterval(updateMarketData, 5000)
+
+  // Initialize menu interactivity
+  initializeMenuInteractivity()
 })
+
+const initializeMenuInteractivity = () => {
+  const menuItems = document.querySelectorAll('.menu li')
+  menuItems.forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.menu li.active').forEach(i => i.classList.remove('active'))
+      this.classList.add('active')
+
+      const page = this.getAttribute('data-page')
+      console.log(`Navigating to: ${page}`)
+    })
+  })
+}
 </script>
+
+<style scoped>
+/* Import Font Awesome */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
+
+/* CSS Variables */
+:root {
+  --dark-bg: #1e1e2d;
+  --card-bg: #27293d;
+  --sidebar-active: #3a3b50;
+  --text-color-light: #f0f0f0;
+  --text-color-faded: #a0a0b0;
+  --accent-color: #ff9900;
+  --green-color: #00b050;
+  --red-color: #e53935;
+  --blue-tag: #00b0ff;
+  --blue-chart: #4a90e2;
+  --font-stack: Arial, sans-serif;
+  --base-font-size: 14px;
+}
+
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-stack);
+}
+
+/* Dashboard Layout */
+.dashboard-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+  background-color: var(--dark-bg);
+  color: var(--text-color-light);
+  font-size: var(--base-font-size);
+}
+
+/* Sidebar Styles */
+.sidebar {
+  background-color: var(--card-bg);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.branding {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--sidebar-active);
+}
+
+.team-logo {
+  width: 40px;
+  height: 40px;
+  margin-right: 12px;
+}
+
+.team-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+.menu h2 {
+  font-size: 12px;
+  color: var(--text-color-faded);
+  margin: 25px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.menu ul {
+  list-style: none;
+  margin-bottom: 20px;
+}
+
+.menu li {
+  padding: 12px 15px;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.menu li:hover {
+  background-color: var(--sidebar-active);
+}
+
+.menu li.active {
+  background-color: var(--sidebar-active);
+  color: var(--accent-color);
+}
+
+.menu li i {
+  margin-right: 12px;
+  width: 16px;
+  text-align: center;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: auto;
+}
+
+.indicator.red {
+  background-color: var(--red-color);
+}
+
+.tag {
+  background-color: var(--blue-tag);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  margin-left: auto;
+}
+
+/* Main Content */
+.main-content {
+  padding: 20px 30px;
+  overflow-y: auto;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 30px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.search-bar {
+  background-color: var(--card-bg);
+  padding: 8px 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  width: 300px;
+  margin-left: auto;
+}
+
+.search-bar input {
+  background: none;
+  border: none;
+  color: var(--text-color-light);
+  outline: none;
+  width: 100%;
+  padding-right: 10px;
+}
+
+.search-bar i {
+  color: var(--text-color-faded);
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 20px;
+}
+
+.user-actions i {
+  font-size: 20px;
+  margin-left: 15px;
+  cursor: pointer;
+  color: var(--text-color-faded);
+  transition: all 0.3s ease;
+}
+
+.user-avatar {
+  font-size: 30px !important;
+  color: var(--green-color) !important;
+}
+
+.user-avatar:hover {
+  box-shadow: 0 0 0 4px white;
+  border-radius: 50%;
+}
+
+/* Alert Messages */
+.alert-container {
+  margin-bottom: 20px;
+}
+
+.alert {
+  padding: 15px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alert-success {
+  background-color: rgba(0, 176, 80, 0.1);
+  border: 1px solid var(--green-color);
+  color: var(--green-color);
+}
+
+.alert-error {
+  background-color: rgba(229, 57, 53, 0.1);
+  border: 1px solid var(--red-color);
+  color: var(--red-color);
+}
+
+.alert-close {
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Market Insights Grid */
+.top-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.insight-card {
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 12px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.insight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.insight-card.green-change {
+  border-left: 4px solid var(--green-color);
+}
+
+.insight-card.red-change {
+  border-left: 4px solid var(--red-color);
+}
+
+.insight-card .title {
+  font-size: 14px;
+  color: var(--text-color-faded);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.insight-card .value {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.change-percent {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.green-change .change-percent {
+  color: var(--green-color);
+}
+
+.red-change .change-percent {
+  color: var(--red-color);
+}
+
+.mini-chart {
+  height: 30px;
+  width: 100%;
+}
+
+/* Widgets Grid */
+.widgets-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.widget {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.widget-header h2 {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* Chart Widget */
+.main-chart-widget .tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 8px 16px;
+  background-color: var(--dark-bg);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab.active {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.chart-area-container {
+  height: 300px;
+  margin-bottom: 15px;
+}
+
+.chart-footer {
+  display: flex;
+  justify-content: space-around;
+  color: var(--text-color-faded);
+  font-size: 12px;
+}
+
+/* Account Summary Widget */
+.account-info {
+  margin-bottom: 15px;
+}
+
+.account-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-color-light);
+}
+
+.balance-title {
+  font-size: 12px;
+  color: var(--text-color-faded);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.balance-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--green-color);
+  margin-bottom: 20px;
+}
+
+.key-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric p:first-child {
+  font-size: 12px;
+  color: var(--text-color-faded);
+  text-transform: uppercase;
+}
+
+.metric .value {
+  font-weight: 500;
+  color: var(--text-color-light);
+}
+
+/* Trading Section */
+.trading-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.trading-card {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.card-header h3 {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.order-side-toggle {
+  display: flex;
+  gap: 5px;
+}
+
+.side-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: var(--dark-bg);
+  color: var(--text-color-light);
+}
+
+.side-btn.active {
+  background-color: var(--green-color);
+  color: white;
+}
+
+.side-btn:nth-child(2).active {
+  background-color: var(--red-color);
+}
+
+/* Form Styles */
+.order-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group label {
+  font-size: 12px;
+  color: var(--text-color-faded);
+  text-transform: uppercase;
+}
+
+.form-input, .form-select {
+  padding: 10px;
+  border: 1px solid var(--sidebar-active);
+  border-radius: 6px;
+  background-color: var(--dark-bg);
+  color: var(--text-color-light);
+  outline: none;
+}
+
+.form-input:focus, .form-select:focus {
+  border-color: var(--accent-color);
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submit-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.submit-btn.buy {
+  background-color: var(--green-color);
+  color: white;
+}
+
+.submit-btn.sell {
+  background-color: var(--red-color);
+  color: white;
+}
+
+.submit-btn:hover {
+  opacity: 0.8;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Balance Actions */
+.balance-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.action-section h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.balance-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-btn {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.deposit-btn {
+  background-color: var (--green-color);
+  color: white;
+}
+
+.withdraw-btn {
+  background-color: var(--red-color);
+  color: white;
+}
+
+.action-btn:hover {
+  opacity: 0.8;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Data Section */
+.data-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.portfolio-section {
+  margin-bottom: 30px;
+}
+
+.data-card {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.data-card h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+/* Order Book */
+.order-book {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-title {
+  font-size: 14px;
+  color: var(--text-color-faded);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.order-book-table, .orders-table, .portfolio-table {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--sidebar-active);
+  font-size: 12px;
+  color: var(--text-color-faded);
+  text-transform: uppercase;
+}
+
+.orders-table .table-header {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+.portfolio-table .table-header {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(58, 59, 80, 0.3);
+  font-size: 14px;
+}
+
+.orders-table .table-row {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+.portfolio-table .table-row {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+
+.ask-row .price {
+  color: var(--red-color);
+}
+
+.bid-row .price {
+  color: var(--green-color);
+}
+
+.side.buy {
+  color: var(--green-color);
+}
+
+.side.sell {
+  color: var(--red-color);
+}
+
+.empty-message {
+  text-align: center;
+  color: var(--text-color-faded);
+  padding: 20px;
+  font-style: italic;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .widgets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trading-section {
+    grid-template-columns: 1fr;
+  }
+
+  .data-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .top-insights-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

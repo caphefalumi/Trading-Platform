@@ -4,7 +4,9 @@
 #include <string>
 #include <mutex>
 #include <map>
-// #include <zmq.hpp>
+#include <vector>
+#include <chrono>
+#include <zmq.hpp>
 
 struct Order {
     std::string id;
@@ -30,31 +32,32 @@ struct Trade {
 
 class OrderBook {
 private:
-    std::map<double, std::queue<Order>, std::greater<double>> bids; // descending
-    std::map<double, std::queue<Order>> asks; // ascending
+    std::map<double, std::queue<Order>, std::greater<double>> bids;
+    std::map<double, std::queue<Order>> asks;
     std::mutex book_mutex;
 
 public:
-    std::vector<Trade> addOrder(Order order);
+    std::vector<Trade> addOrder(const Order& order);
+    std::string getOrderBookSnapshot();
     double getBestBid();
     double getBestAsk();
-    void printOrderBook();
 };
 
 class MatchingEngine {
 private:
     std::unordered_map<std::string, OrderBook> orderBooks;
-    // zmq::context_t context;
-    // zmq::socket_t python_socket;
+    zmq::context_t context;
+    zmq::socket_t nodejs_socket;
     std::mutex engine_mutex;
 
     std::string generateTradeId();
-    void sendToPython(const std::string& message);
+    void sendToNodeJS(const std::string& message);
 
 public:
     MatchingEngine();
     ~MatchingEngine();
     
     void processOrder(const Order& order);
+    std::string processCommand(const std::string& command);
     void run();
 };

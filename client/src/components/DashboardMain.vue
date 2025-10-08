@@ -751,6 +751,11 @@ const initializeMenuInteractivity = () => {
   width: 100%;
   padding-right: 10px;
 }
+
+.search-bar:focus-within {
+  border: #a0a0b0 1px solid;
+}
+
 .search-bar:hover {
   border: #a0a0b0 1px solid;
 }
@@ -780,8 +785,8 @@ const initializeMenuInteractivity = () => {
 }
 
 .user-avatar:hover {
-  box-shadow: 0 0 0 4px white;
-  border-radius: 50%;
+  /* box-shadow: 0 0 0 4px white;
+  border-radius: 50%; */
   cursor: pointer;
 }
 

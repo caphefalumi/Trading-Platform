@@ -1,0 +1,198 @@
+/* Css/_widgets.css - Styling for Cards, Charts, and Metrics */
+
+/* Helper Classes */
+.green-text { color: var(--green-color); }
+.red-text { color: var(--red-color); }
+
+/* Top Insight Cards Grid */
+.top-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.insight-card {
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.insight-card .title {
+    color: var(--text-color-faded);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.insight-card .change-percent {
+    font-weight: bold;
+}
+
+.insight-card.red-change .change-percent { color: var(--red-color); }
+.insight-card.green-change .change-percent,
+.insight-card.green-change .change-value { color: var(--green-color); }
+
+
+.insight-card .value {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 5px 0 10px;
+}
+
+/* ⬅️ MINI CHART FIX: Set container for canvas and remove placeholder gradients */
+.mini-chart {
+    height: 40px; /* Gives Chart.js canvas space to render */
+    opacity: 1;
+    position: relative; 
+    /* Remove old background styles */
+    background-image: none !important;
+}
+
+
+/* Main Widgets Grid */
+.widgets-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; 
+    gap: 25px;
+}
+
+.widget {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+/* Left Chart Widget Styling */
+.main-chart-widget {
+    display: flex;
+    flex-direction: column;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.tab {
+    padding: 5px 15px;
+    margin-right: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+
+.tab.active {
+    background-color: var(--green-color);
+    color: var(--dark-bg);
+    font-weight: bold;
+}
+
+/* ⬅️ MAIN CHART CONTAINER: Ready for Canvas */
+.chart-area-container {
+    flex-grow: 1; /* Makes the chart area fill the remaining space */
+    border-radius: 4px;
+    margin-bottom: 15px;
+    position: relative; 
+    min-height: 250px; 
+}
+
+#main-chart-canvas {
+    width: 100% !important; 
+    height: 100% !important; 
+}
+
+
+.chart-footer {
+    display: flex;
+    justify-content: space-around;
+    color: var(--text-color-faded);
+    font-size: 12px;
+}
+
+/* Right Widget Styles (Stock Exchange) */
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.widget-header h2 {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.stock-value {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.stock-value .change {
+    font-size: 16px;
+    font-weight: normal;
+    margin-left: 10px;
+}
+
+.key-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    text-align: center;
+    background-color: var(--dark-bg);
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.key-metrics p:first-child {
+    color: var(--text-color-faded);
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.key-metrics .value {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.range-slider {
+    margin-bottom: 25px;
+}
+.range-slider p {
+    font-size: 12px;
+    color: var(--text-color-faded);
+    margin-bottom: 5px;
+}
+.slider-track {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    position: relative;
+}
+.slider-fill {
+    width: 65%; 
+    height: 100%;
+    background-color: var(--accent-color);
+    border-radius: 3px;
+}
+
+.returns {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.returns p:first-child {
+    color: var(--text-color-faded);
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+.returns .value {
+    font-size: 20px;
+    font-weight: bold;
+}

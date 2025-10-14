@@ -76,7 +76,7 @@ export const getAccountSummary = async (req, res) => {
     res.json({
       account: {
         id: account.id,
-        name: account.accountName,
+        name: account.email,
         currency: account.currency.code,
         balance: {
           available: formatDecimal(balance.available),

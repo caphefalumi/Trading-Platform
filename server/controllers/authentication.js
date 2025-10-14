@@ -15,18 +15,14 @@ const validatePassword = (password) => {
   return password && password.length >= 8
 }
 
-const validateAccountName = (name) => {
-  return name && name.trim().length >= 2
-}
-
 export const register = async (req, res) => {
-  const { email, accountName, password } = req.body
+  const { email, password } = req.body
 
   // Validate required fields
-  if (!email || !accountName || !password) {
+  if (!email || !password) {
     return res.status(400).json({
       error: 'All fields are required.',
-      fields: { email: !email, accountName: !accountName, password: !password },
+      fields: { email: !email, password: !password },
     })
   }
 
@@ -35,14 +31,6 @@ export const register = async (req, res) => {
     return res.status(400).json({
       error: 'Please enter a valid email address.',
       fields: { email: true },
-    })
-  }
-
-  // Validate account name
-  if (!validateAccountName(accountName)) {
-    return res.status(400).json({
-      error: 'Account name must be at least 2 characters long.',
-      fields: { accountName: true },
     })
   }
 
@@ -72,7 +60,6 @@ export const register = async (req, res) => {
     await prisma.account.create({
       data: {
         id: uuidv7(),
-        username,
         email,
         password: hashedPassword,
         provider,
@@ -101,7 +88,7 @@ export const login = async (req, res) => {
   // Validate email format
   if (!validateEmail(email)) {
     return res.status(400).json({
-      error: 'Please enter a valid email 123 address.',
+      error: 'Please enter a valid email address.',
       fields: { email: true },
     })
   }
@@ -112,7 +99,6 @@ export const login = async (req, res) => {
       select: {
         id: true,
         email: true,
-        accountName: true,
         password: true,
         createdAt: true,
       },
@@ -190,7 +176,6 @@ export const oauthGoogle = async (req, res) => {
         account = await tx.account.create({
           data: {
             email: email.toLowerCase(),
-            accountName: name || email.split('@')[0],
             currencyId: currency.id,
             password: bcrypt.hashSync(crypto.randomUUID(), 10)
           },
@@ -199,7 +184,6 @@ export const oauthGoogle = async (req, res) => {
         await tx.accountBalance.create({
           data: {
             accountId: account.id,
-            currencyId: currency.id,
             available: new Prisma.Decimal(0),
             reserved: new Prisma.Decimal(0),
             total: new Prisma.Decimal(0),

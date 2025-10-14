@@ -32,7 +32,7 @@
         </aside>
 
         <main class="main-content">
-            
+
             <header class="header">
                 <h1>Dashboard</h1>
                 <div class="search-bar">
@@ -69,7 +69,7 @@
                     <div class="value">6,355.46</div>
                     <div class="mini-chart"></div>
                 </div>
-                
+
                 <div class="insight-card green-change" data-stock="DOW2">
                     <div class="title">DOW <span class="change-value">+163</span> <span class="change-percent">0.49%</span></div>
                     <div class="value">32,053.74</div>
@@ -83,7 +83,7 @@
             </section>
 
             <section class="widgets-grid">
-                
+
                 <div class="widget main-chart-widget">
                     <div class="tabs">
                         <span class="tab active" data-index="DSEX">DSEX</span>
@@ -130,13 +130,13 @@
     </div>
 </template>
 
-<script>   
+<script>
 // Java/script.js
 
 // Global variable to hold the main chart instance so we can destroy/update it
-let tradingChart = null; 
+let tradingChart = null;
 // Global variable to track the currently active index for real-time updates
-let activeIndex = 'DSEX'; 
+let activeIndex = 'DSEX';
 
 // Simulated time labels for the main chart
 const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
@@ -144,28 +144,28 @@ const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
 // --- SIMULATED DATA STORE ---
 // Stores the current streaming data for each index.
 const marketDataStore = {
-    'DSEX': { data: [6000, 5820, 5950, 6020, 6190, 6150, 6210], color: 'var(--green-color)', type: 'bar' }, 
+    'DSEX': { data: [6000, 5820, 5950, 6020, 6190, 6150, 6210], color: 'var(--green-color)', type: 'bar' },
     'DSES': { data: [340, 440, 700, 630, 575, 610, 635], color: 'var(--blue-chart)', type: 'bar' },
     'DS30': { data: [2042, 1999, 1563, 1000, 3465, 2250, 2300], color: 'var(--accent-color)', type: 'bar' },
 };
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- UTILITY FUNCTIONS ---
     // A utility function to format numbers with commas
     const formatNumber = (num) => num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    
+
     // Helper to get CSS variable color from the DOM
     const getCssVar = (variable) => getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
 
     // --- 1. CHART TAB SWITCHING LOGIC (Main Chart) ---
     const chartTabs = document.querySelectorAll('.main-chart-widget .tab');
-    
+
     // Function to initialize and update the main chart using Chart.js
     function loadChart(indexName) {
         console.log(`Loading new chart for: ${indexName}`);
-        
+
         // Set the global active index
         activeIndex = indexName;
         const indexConfig = marketDataStore[indexName];
@@ -177,25 +177,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Define data based on the selected index (Now pulled from marketDataStore)
         const chartData = indexConfig.data;
-        const chartBarColor = getCssVar(indexConfig.color); 
+        const chartBarColor = getCssVar(indexConfig.color);
 
         const ctx = document.getElementById('main-chart-canvas').getContext('2d');
 
         // 3. Create the new chart instance
         tradingChart = new Chart(ctx, {
-            type: 'bar', 
+            type: 'bar',
             data: {
-                labels: chartLabels, 
+                labels: chartLabels,
                 datasets: [{
                     label: `${indexName} Price`,
                     data: chartData,
-                    backgroundColor: chartBarColor, 
-                    borderRadius: 4, 
+                    backgroundColor: chartBarColor,
+                    borderRadius: 4,
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false, 
+                maintainAspectRatio: false,
                 animation: false, // CRITICAL: Disable animation for real-time updates
                 plugins: {
                     legend: { display: false },
@@ -203,12 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 scales: {
                     x: {
-                        grid: { display: false }, 
-                        ticks: { color: getCssVar('--text-color-faded') } 
+                        grid: { display: false },
+                        ticks: { color: getCssVar('--text-color-faded') }
                     },
                     y: {
-                        grid: { color: getCssVar('--sidebar-active') }, 
-                        ticks: { color: getCssVar('--text-color-faded') } 
+                        grid: { color: getCssVar('--sidebar-active') },
+                        ticks: { color: getCssVar('--text-color-faded') }
                     }
                 }
             }
@@ -220,10 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.addEventListener('click', function() {
             // Remove 'active' from all tabs
             chartTabs.forEach(t => t.classList.remove('active'));
-            
+
             // Add 'active' to the clicked tab
             this.classList.add('active');
-            
+
             // Load the corresponding chart
             const indexName = this.getAttribute('data-index');
             loadChart(indexName);
@@ -231,29 +231,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Load the default chart on page load
-    loadChart('DSEX'); 
-    
+    loadChart('DSEX');
+
     // --- 2. DYNAMIC DATA SIMULATION & MINI-CHART GENERATION ---
 
     // Function to draw a small, subtle line chart inside the insight cards
     function drawMiniChart(cardElement, isPositive) {
         const chartContainer = cardElement.querySelector('.mini-chart');
         let canvas = chartContainer.querySelector('canvas');
-        
+
         if (!canvas) {
             // Create canvas if it doesn't exist
             canvas = document.createElement('canvas');
             canvas.id = `mini-chart-${Math.random().toString(36).substring(2, 9)}`;
             chartContainer.appendChild(canvas);
         }
-        
+
         const existingChart = Chart.getChart(canvas);
-        
+
         // Simulated data (new data on every call)
         const data = Array.from({ length: 15 }, () => (Math.random() * 10) + 80);
-        
-        const chartColor = isPositive ? getCssVar('--green-color') : getCssVar('--red-color'); 
-        
+
+        const chartColor = isPositive ? getCssVar('--green-color') : getCssVar('--red-color');
+
         if (existingChart) {
              // Update logic for mini chart
             existingChart.data.datasets[0].data = data;
@@ -267,11 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     labels: Array(15).fill(''),
                     datasets: [{
                         data: data,
-                        borderColor: chartColor, 
-                        borderWidth: 3,        
-                        tension: 0.6,          
-                        fill: false,           
-                        backgroundColor: 'transparent', 
+                        borderColor: chartColor,
+                        borderWidth: 3,
+                        tension: 0.6,
+                        fill: false,
+                        backgroundColor: 'transparent',
                     }]
                 },
                 options: {
@@ -281,8 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     elements: { point: { radius: 0 } },
                     plugins: { legend: { display: false }, tooltip: { enabled: false } },
                     scales: { x: { display: false }, y: { display: false } },
-                    layout: { 
-                        padding: { top: 5, bottom: 5, left: 0, right: 0 } 
+                    layout: {
+                        padding: { top: 5, bottom: 5, left: 0, right: 0 }
                     }
                 }
             });
@@ -293,42 +293,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // This function handles data updates AND mini-chart drawing (runs on interval)
     function updateMarketData() {
         const insightCards = document.querySelectorAll('.insight-card');
-        
+
         // --- A. Update Insight Cards (Individual Stocks) ---
         insightCards.forEach(card => {
-            // Simulate random change 
+            // Simulate random change
             const changePercentValue = (Math.random() * 1.5) - 0.75; // +/- 0.75% max change
             const isPositive = changePercentValue >= 0;
-            
+
             // Get elements
             const percentSpan = card.querySelector('.change-percent');
             const valueDiv = card.querySelector('.value');
             let currentValue = parseFloat(valueDiv.textContent.replace(/,/g, ''));
-            
+
             // Calculate and format
             const newValue = currentValue * (1 + changePercentValue / 100);
             const formattedPercent = (isPositive ? '+' : '') + changePercentValue.toFixed(2) + '%';
-            
+
             // Apply updates and colors to the text/card background
             card.classList.remove('red-change', 'green-change');
             card.classList.add(isPositive ? 'green-change' : 'red-change');
-            
+
             valueDiv.textContent = formatNumber(newValue);
             percentSpan.textContent = formattedPercent;
-            
+
             // Draw or update the mini-chart
-            drawMiniChart(card, isPositive); 
+            drawMiniChart(card, isPositive);
         });
 
         // --- B. Update Main Stock Exchange Details ---
         const mainStockChange = document.getElementById('stock-exchange-change');
-        
-        const changeValue = (Math.random() * 5 - 2).toFixed(2); 
+
+        const changeValue = (Math.random() * 5 - 2).toFixed(2);
         const changePct = ((changeValue / 6100) * 100).toFixed(2);
         const isMainPositive = changeValue >= 0;
-        
+
         mainStockChange.textContent = `${isMainPositive ? '+' : ''}${changeValue} (${changePct}%)`;
-        
+
         mainStockChange.classList.remove('green', 'red');
         mainStockChange.classList.add(isMainPositive ? 'green' : 'red');
 
@@ -336,17 +336,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tradingChart && marketDataStore[activeIndex]) {
             // 1. Get current data for the active chart
             const currentDataSet = marketDataStore[activeIndex].data;
-            
+
             // 2. Remove the oldest data point and add a new one (Streaming effect)
-            currentDataSet.shift(); 
-            
+            currentDataSet.shift();
+
             // Generate a small, volatile price update for the new point
             const lastValue = currentDataSet[currentDataSet.length - 1] || 6000;
             const fluctuation = (Math.random() * 40) - 20; // +/- 20 points
             const newPoint = lastValue + fluctuation;
 
             currentDataSet.push(newPoint); // Add the new point
-            
+
             // 3. Update Chart.js and redraw
             tradingChart.data.datasets[0].data = currentDataSet;
             tradingChart.update();
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. START THE REAL-TIME TIMER ---
     // This is the core real-time simulation logic. Updates every 2 seconds (2000 ms).
-    setInterval(updateMarketData, 2000); 
+    setInterval(updateMarketData, 2000);
 
     // --- 5. MENU INTERACTIVITY (For UI feedback) ---
     const menuItems = document.querySelectorAll('.menu li');
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.menu li.active').forEach(i => i.classList.remove('active'));
             // Set active state on the clicked item
             this.classList.add('active');
-            
+
             const page = this.getAttribute('data-page');
             console.log(`Navigating to: ${page}`);
         });
@@ -379,10 +379,10 @@ document.addEventListener('DOMContentLoaded', () => {
 <style scoped>
 /* Css/style.css */
 
-@import url('variables.css');
-@import url('layout.css');
-@import url('sidebar.css');
-@import url('widgets.css');
+@import url('../css/variables.css');
+@import url('../css/layout.css');
+@import url('../css/sidebar.css');
+@import url('../css/widgets.css');
 
 
 .user-actions .user-avatar {
@@ -393,10 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 .user-actions .user-avatar:hover {
     /* Creates a crisp, solid white ring (4px thickness) around the avatar */
-    box-shadow: 0 0 0 4px white; 
-    
+    box-shadow: 0 0 0 4px white;
+
     /* Ensures the ring is perfectly circular */
-    border-radius: 50%; 
+    border-radius: 50%;
 }
 
 /* Css/_layout.css */
@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: var(--font-stack); 
+    font-family: var(--font-stack);
 }
 
 body {
@@ -419,7 +419,7 @@ body {
 .dashboard-container {
     display: grid;
     /* Sidebar width + Main content column */
-    grid-template-columns: 280px 1fr; 
+    grid-template-columns: 280px 1fr;
     height: 100vh;
 }
 
@@ -482,7 +482,7 @@ body {
 
 .user-avatar {
     font-size: 30px !important;
-    color: var(--green-color) !important; 
+    color: var(--green-color) !important;
 }
 
 /* Css/_sidebar.css - Sidebar and Menu Styling */
@@ -504,18 +504,18 @@ body {
 
 .team-logo {
     width: 60px; /* Size of the logo image */
-    height: 60px; 
+    height: 60px;
     margin-bottom: 10px; /* Space between logo and text */
     border-radius: 50%; /* Makes the logo circular if desired */
     object-fit: cover; /* Ensures image fills the container */
     /* Add a subtle ring for style, matching the theme */
-    border: 2px solid var(--accent-color); 
+    border: 2px solid var(--accent-color);
 }
 
 .team-name {
-    font-size: 24px; 
+    font-size: 24px;
     font-weight: bold;
-    color: var(--text-color-light); 
+    color: var(--text-color-light);
 }
 
 
@@ -558,7 +558,7 @@ body {
 .menu li i {
     margin-right: 15px;
     font-size: 16px;
-    width: 20px; 
+    width: 20px;
     text-align: center;
 }
 
@@ -580,7 +580,7 @@ body {
     font-weight: bold;
 }
 .tag.new {
-    background-color: var(--blue-tag); 
+    background-color: var(--blue-tag);
     color: var(--dark-bg);
 }
 
@@ -600,7 +600,7 @@ body {
     --red-color: #e53935;       /* Negative change/Down */
     --blue-tag: #00b0ff;        /* Blue 'new' tag */
     --blue-chart: #4a90e2;      /* Placeholder chart color */
-    
+
     /* Font Settings */
     --font-stack: Arial, sans-serif;
     --base-font-size: 14px;
@@ -615,7 +615,7 @@ body {
 /* Top Insight Cards Grid */
 .top-insights-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
     margin-bottom: 25px;
 }
@@ -654,7 +654,7 @@ body {
 .mini-chart {
     height: 40px; /* Gives Chart.js canvas space to render */
     opacity: 1;
-    position: relative; 
+    position: relative;
     /* Remove old background styles */
     background-image: none !important;
 }
@@ -663,7 +663,7 @@ body {
 /* Main Widgets Grid */
 .widgets-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr; 
+    grid-template-columns: 2fr 1fr;
     gap: 25px;
 }
 
@@ -704,13 +704,13 @@ body {
     flex-grow: 1; /* Makes the chart area fill the remaining space */
     border-radius: 4px;
     margin-bottom: 15px;
-    position: relative; 
-    min-height: 250px; 
+    position: relative;
+    min-height: 250px;
 }
 
 #main-chart-canvas {
-    width: 100% !important; 
-    height: 100% !important; 
+    width: 100% !important;
+    height: 100% !important;
 }
 
 
@@ -782,7 +782,7 @@ body {
     position: relative;
 }
 .slider-fill {
-    width: 65%; 
+    width: 65%;
     height: 100%;
     background-color: var(--accent-color);
     border-radius: 3px;

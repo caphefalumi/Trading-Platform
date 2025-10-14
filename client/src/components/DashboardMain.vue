@@ -65,7 +65,7 @@
         </div>
 
         <div v-if="account" class="account-info">
-          <div class="account-name">{{ account.accountName }}</div>
+          <div class="account-name">{{ account.email }}</div>
         </div>
 
         <div v-if="accountSummary" class="account-balance">

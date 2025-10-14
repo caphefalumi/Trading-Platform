@@ -1,0 +1,21 @@
+/* Css/_variables.css */
+
+:root {
+    /* Base Colors */
+    --dark-bg: #1e1e2d;         /* Main background */
+    --card-bg: #27293d;         /* Card and sidebar background */
+    --sidebar-active: #3a3b50;  /* Active menu item background */
+    --text-color-light: #f0f0f0;/* Main text color */
+    --text-color-faded: #a0a0b0;/* Faded text (titles, menus) */
+
+    /* Accent & Status Colors */
+    --accent-color: #ff9900;    /* Orange logo highlight */
+    --green-color: #00b050;     /* Positive change/Up */
+    --red-color: #e53935;       /* Negative change/Down */
+    --blue-tag: #00b0ff;        /* Blue 'new' tag */
+    --blue-chart: #4a90e2;      /* Placeholder chart color */
+    
+    /* Font Settings */
+    --font-stack: Arial, sans-serif;
+    --base-font-size: 14px;
+}

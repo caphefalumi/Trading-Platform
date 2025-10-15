@@ -129,7 +129,6 @@ class MatchingEngine {
                 price: orderData.price,
                 quantity: quantityStr,
                 filledQuantity: '0',
-                remainingQuantity: quantityStr,
             }
         })
 

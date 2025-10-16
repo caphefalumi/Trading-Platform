@@ -244,6 +244,10 @@ onMounted(async () => {
   await fetchMarketInsights(); // 🟢 Fetch real data here
   await nextTick();
   await loadChart(selectedChartTab.value);
+
+  setInterval(async () => { // 🟢 Refresh market insights every 1.5 minutes
+    await fetchMarketInsights()
+  }, 1500)
 });
 </script>
 <style scoped>

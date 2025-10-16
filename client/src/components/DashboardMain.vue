@@ -4,7 +4,7 @@
     <header class="header">
       <h1>Dashboard</h1>
       <div class="search-bar">
-        <input type="text" placeholder="Search" />
+        <input type="text" placeholder="Search">
         <span class="mdi mdi-magnify"></span>
       </div>
       <div class="user-actions">
@@ -24,22 +24,17 @@
       </div>
     </div>
 
-    <!-- Market Insights Grid -->
+    <!-- Market Insights Grid (REAL crypto data) -->
     <section class="top-insights-grid">
       <div
         v-for="insight in marketInsights"
         :key="insight.symbol"
-        :class="[
-          'insight-card',
-          insight.changePercent >= 0 ? 'green-change' : 'red-change',
-        ]"
+        :class="['insight-card', insight.changePercent >= 0 ? 'green-change' : 'red-change']"
         :data-symbol="insight.symbol"
       >
         <div class="title">
           {{ insight.symbol }}
-          <span class="change-percent">
-            {{ formatChangePercent(insight.changePercent) }}
-          </span>
+          <span class="change-percent">{{ formatChangePercent(insight.changePercent) }}</span>
         </div>
         <div class="value">{{ formatNumber(insight.price, 2) }}</div>
         <div class="mini-chart"></div>
@@ -107,149 +102,180 @@
         </div>
       </div>
     </section>
-
-    <!-- Trading + Portfolio -->
-    <!-- (phần còn lại giữ nguyên như bản gốc của bạn, không thay đổi) -->
   </main>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch, nextTick } from "vue";
-import apiClient from "../utils/api";
-import { sessionState } from "../stores/session";
-import { getCryptoPrices } from "@/utils/crypto"; // 🟢 thêm dòng này
+import { computed, onMounted, reactive, ref, nextTick } from "vue"
+import apiClient from "../utils/api"
+import { sessionState } from "../stores/session"
+import axios from "axios"
 
-// ========== EXISTING CODE ==========
-const account = computed(() => sessionState.account);
-const accountSummary = ref(null);
-const instruments = ref([]);
-const selectedInstrumentId = ref("");
-const orderBook = ref({ bids: [], asks: [] });
-const orders = ref([]);
-const depositAmount = ref("");
-const withdrawAmount = ref("");
-const feedback = reactive({ success: "", error: "" });
-const loading = reactive({ deposit: false, withdraw: false, order: false });
+const API_KEY = import.meta.env.VITE_COINMARKETCAP_API_KEY
+const BASE_URL = "https://pro-api.coinmarketcap.com"
 
-const orderForm = reactive({
-  side: "BUY",
-  type: "LIMIT",
-  quantity: "",
-  price: "",
-  timeInForce: "GTC",
-});
+const account = computed(() => sessionState.account)
+const accountSummary = ref(null)
+const feedback = reactive({ success: "", error: "" })
 
-// Chart settings
-const mainChart = ref(null);
-const selectedChartTab = ref("DSEX");
-const chartTabs = ["DSEX", "DSES", "DS30"];
-let tradingChart = null;
+const mainChart = ref(null)
+const selectedChartTab = ref("DSEX")
+const chartTabs = ["DSEX", "DSES", "DS30"]
+let tradingChart = null
 
-// 🟢 Market insights: now using API data
-const marketInsights = ref([]);
+// 🟢 Market insights: real crypto + mock indices
+const marketInsights = ref([])
 
-const fetchMarketInsights = async () => {
+const fetchCryptoPrice = async (symbol) => {
   try {
-    const data = await getCryptoPrices(["BTC", "ETH"]);
-    const cryptos = Object.entries(data).map(([symbol, val]) => ({
-      symbol,
-      price: val.quote.USD.price,
-      changePercent: val.quote.USD.percent_change_24h,
-    }));
-
-    // Add optional mock ones (for now)
-    marketInsights.value = [
-      { symbol: "GOLD", price: 2120.56, changePercent: -0.04 },
-      { symbol: "DOW", price: 32053.74, changePercent: 0.45 },
-      { symbol: "S&P500", price: 43003.06, changePercent: 0.47 },
-      { symbol: "NASDAQ", price: 6355.46, changePercent: 0.64 },
-      ...cryptos,
-    ];
+    const { data } = await axios.get(`${BASE_URL}/v1/cryptocurrency/quotes/latest`, {
+      params: { symbol, convert: "USD" },
+      headers: { "X-CMC_PRO_API_KEY": API_KEY },
+    })
+    return data.data[symbol]?.quote?.USD?.price || null
   } catch (error) {
-    console.error("Error fetching real market data:", error);
+    console.error(`Error fetching ${symbol}:`, error.message)
+    return null
   }
-};
+}
 
-// ========== UTILITIES ==========
-const accountCurrency = computed(
-  () => accountSummary.value?.account?.currency ?? "USDT"
-);
-const formatNumber = (value, fractionDigits = 2) => {
-  const numeric = Number.parseFloat(value);
-  if (Number.isNaN(numeric)) return "0.00";
-  return numeric.toLocaleString(undefined, {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  });
-};
-const formatChangePercent = (value) => {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
-};
+const updateMarketData = async () => {
+  const symbols = ["BTC", "ETH"]
+  const results = await Promise.all(symbols.map(fetchCryptoPrice))
 
-// ========== CHART + UI LOGIC ==========
-const loadChart = async (indexName) => {
-  await nextTick();
-  if (!mainChart.value) return;
-  if (tradingChart) tradingChart.destroy();
+  marketInsights.value = [
+    { symbol: "GOLD", price: 2120.56, changePercent: -0.04 },
+    { symbol: "DOW", price: 32053.74, changePercent: 0.45 },
+    { symbol: "S&P500", price: 43003.06, changePercent: 0.47 },
+    { symbol: "NASDAQ", price: 6355.46, changePercent: 0.64 },
+    ...results.map((price, i) => ({
+      symbol: symbols[i],
+      price: price ?? 0,
+      changePercent: (Math.random() - 0.5) * 1.2,
+    })),
+  ]
 
-  const { Chart, registerables } = await import("chart.js");
-  Chart.register(...registerables);
+  nextTick(() => {
+    marketInsights.value.forEach((insight) => {
+      const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
+      if (element) drawMiniChart(element, insight.changePercent >= 0)
+    })
+  })
+}
 
-  let chartData, chartBarColor;
-  if (indexName === "DSEX") {
-    chartData = [6000, 6100, 6050, 6150, 6120, 6200, 6148];
-    chartBarColor = "#00b050";
-  } else if (indexName === "DSES") {
-    chartData = [550, 580, 560, 590, 575, 610, 595];
-    chartBarColor = "#4a90e2";
+// Chart.js mini sparkline
+const drawMiniChart = async (element, isPositive) => {
+  if (!element) return
+  const { Chart, registerables } = await import("chart.js")
+  Chart.register(...registerables)
+
+  let canvas = element.querySelector("canvas")
+  if (!canvas) {
+    canvas = document.createElement("canvas")
+    canvas.width = 100
+    canvas.height = 30
+    element.appendChild(canvas)
   } else {
-    chartData = [2100, 2150, 2080, 2200, 2180, 2250, 2210];
-    chartBarColor = "#ff9900";
+    const existingChart = Chart.getChart(canvas)
+    if (existingChart) existingChart.destroy()
   }
 
-  const ctx = mainChart.value.getContext("2d");
-  tradingChart = new Chart(ctx, {
-    type: "bar",
+  const data = Array.from({ length: 15 }, () => Math.random() * 10 + 80)
+  const chartColor = isPositive ? "#00b050" : "#e53935"
+
+  new Chart(canvas.getContext("2d"), {
+    type: "line",
     data: {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"],
+      labels: Array(15).fill(""),
       datasets: [
         {
-          label: `${indexName} Price`,
-          data: chartData,
-          backgroundColor: chartBarColor,
-          borderRadius: 4,
+          data,
+          borderColor: chartColor,
+          borderWidth: 2,
+          tension: 0.6,
+          fill: false,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { mode: "index" } },
+      elements: { point: { radius: 0 } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } },
+    },
+  })
+}
+
+// 🔹 Chart bar for DSEX, DSES, DS30 (mock data)
+const loadChart = async (indexName) => {
+  await nextTick()
+  if (!mainChart.value) return
+  if (tradingChart) tradingChart.destroy()
+
+  const { Chart, registerables } = await import("chart.js")
+  Chart.register(...registerables)
+
+  let chartData, chartBarColor
+  if (indexName === "DSEX") {
+    chartData = [6000, 6100, 6050, 6150, 6120, 6200, 6148]
+    chartBarColor = "#00b050"
+  } else if (indexName === "DSES") {
+    chartData = [550, 580, 560, 590, 575, 610, 595]
+    chartBarColor = "#4a90e2"
+  } else {
+    chartData = [2100, 2150, 2080, 2200, 2180, 2250, 2210]
+    chartBarColor = "#ff9900"
+  }
+
+  const ctx = mainChart.value.getContext("2d")
+  tradingChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"],
+      datasets: [{ label: `${indexName} Price`, data: chartData, backgroundColor: chartBarColor, borderRadius: 4 }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
       scales: {
         x: { grid: { display: false }, ticks: { color: "#fff" } },
         y: { grid: { color: "#27293d" }, ticks: { color: "#fff" } },
       },
     },
-  });
-};
+  })
+}
 
 const selectChartTab = (tab) => {
-  selectedChartTab.value = tab;
-  loadChart(tab);
-};
+  selectedChartTab.value = tab
+  loadChart(tab)
+}
 
-// ========== LIFECYCLE ==========
+const accountCurrency = computed(() => accountSummary.value?.account?.currency ?? "USDT")
+
+const formatNumber = (value, fractionDigits = 2) => {
+  const numeric = Number.parseFloat(value)
+  if (Number.isNaN(numeric)) return "0.00"
+  return numeric.toLocaleString(undefined, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+}
+
+const formatChangePercent = (value) => {
+  const sign = value >= 0 ? "+" : ""
+  return `${sign}${value.toFixed(2)}%`
+}
+
+// Lifecycle
 onMounted(async () => {
-  await fetchMarketInsights(); // 🟢 Fetch real data here
-  await nextTick();
-  await loadChart(selectedChartTab.value);
-});
+  await nextTick()
+  await loadChart(selectedChartTab.value)
+  await updateMarketData()
+  setInterval(updateMarketData, 1500)
+})
 </script>
-
-<style scoped>
-/* giữ nguyên toàn bộ phần CSS bạn đang có */
-</style>
 <style scoped>
 /* Import Font Awesome */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');

@@ -31,7 +31,6 @@ const routes = [
   {
     path: '/profile',
     name: 'profile',
-    component: () => import('../views/HomeView.vue'),
     meta: { requiresAuth: true },
   },
   {

@@ -1,10 +1,16 @@
 import express from 'express'
-import { createInstrument, listInstruments, updateInstrument } from '../controllers/instruments.js'
+import prisma from '../utils/prisma.js'
 
 const router = express.Router()
 
-router.get('/', listInstruments)
-router.post('/', createInstrument)
-router.put('/:id', updateInstrument)
+// GET /instruments - list all instruments
+router.get('/', async (req, res) => {
+  try {
+    const instruments = await prisma.instrument.findMany({})
+    res.json(instruments)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch instruments.' })
+  }
+})
 
 export default router

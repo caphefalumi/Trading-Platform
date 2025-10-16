@@ -11,4 +11,5 @@ router.use('/api/accounts', accountRoutes)
 router.use('/api/instruments', instrumentRoutes)
 router.use('/api/orders', orderRoutes)
 router.use('/api/engines', engineRoutes)
+router.use('/instruments', instrumentRoutes)
 export default router

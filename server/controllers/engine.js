@@ -114,6 +114,21 @@ class MatchingEngine {
         if (!orderData.accountId || !orderData.instrumentId || !orderData.sideId || !orderData.typeId || !orderData.statusId || !orderData.price || !orderData.quantity) {
             throw new Error('Missing required order fields')
         }
+        // Foreign key existence checks
+        const [account, instrument, side, type, status, tif] = await Promise.all([
+            prisma.account.findUnique({ where: { id: orderData.accountId } }),
+            prisma.instrument.findUnique({ where: { id: orderData.instrumentId } }),
+            prisma.orderSide.findUnique({ where: { id: orderData.sideId } }),
+            prisma.orderType.findUnique({ where: { id: orderData.typeId } }),
+            prisma.orderStatus.findUnique({ where: { id: orderData.statusId } }),
+            orderData.timeInForceId ? prisma.timeInForceType.findUnique({ where: { id: orderData.timeInForceId } }) : Promise.resolve(true)
+        ])
+        if (!account) throw new Error('Invalid accountId')
+        if (!instrument) throw new Error('Invalid instrumentId')
+        if (!side) throw new Error('Invalid sideId')
+        if (!type) throw new Error('Invalid typeId')
+        if (!status) throw new Error('Invalid statusId')
+        if (orderData.timeInForceId && !tif) throw new Error('Invalid timeInForceId')
         // Ensure quantity is a string for Prisma Decimal
         const quantityStr = orderData.quantity.toString()
         // 1. Create the new order in DB

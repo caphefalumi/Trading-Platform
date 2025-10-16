@@ -1,254 +1,256 @@
 <template>
-  <main class="main-content">
-    <!-- Header -->
-    <header class="header">
-      <h1>Dashboard</h1>
-      <div class="search-bar">
-        <input type="text" placeholder="Search" />
-        <span class="mdi mdi-magnify"></span>
-      </div>
-      <div class="user-actions">
-        <span class="mdi mdi-bell-outline"></span>
-        <span class="mdi mdi-account-circle user-avatar"></span>
-      </div>
-    </header>
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <nav class="menu">
+        <h2>MENU</h2>
+        <ul>
+          <li class="active" data-page="dashboard"><span class="mdi mdi-view-dashboard"></span> Dashboard</li>
+          <li><span class="mdi mdi-currency-usd"></span> Trade</li>
+          <li><span class="mdi mdi-chart-line"></span> Market update</li>
+          <li><span class="mdi mdi-calculator"></span> Income estimator</li>
+          <li><span class="mdi mdi-chart-bar"></span> Interactive chart</li>
+          <li><span class="mdi mdi-hand-coin"></span> Mutual funds</li>
+          <li><span class="mdi mdi-robot"></span> Vocer</li>
+        </ul>
 
-    <!-- Alert Messages -->
-    <div v-if="feedback.error || feedback.success" class="alert-container">
-      <div
-        :class="['alert', feedback.error ? 'alert-error' : 'alert-success']"
-        @click="feedback.error = feedback.success = ''"
-      >
-        {{ feedback.error || feedback.success }}
-        <span class="alert-close">&times;</span>
-      </div>
-    </div>
+        <h2>ACCOUNT</h2>
+        <ul>
+          <li><span class="mdi mdi-folder-open"></span> Portfolio</li>
+          <li><span class="mdi mdi-cog"></span> Settings <span class="indicator red"></span></li>
+          <li><span class="mdi mdi-history"></span> History</li>
+        </ul>
 
-    <!-- Market Insights Grid -->
-    <section class="top-insights-grid">
-      <div
-        v-for="insight in marketInsights"
-        :key="insight.symbol"
-        :class="[
-          'insight-card',
-          insight.changePercent >= 0 ? 'green-change' : 'red-change',
-        ]"
-        :data-symbol="insight.symbol"
-      >
-        <div class="title">
-          {{ insight.symbol }}
-          <span class="change-percent">
-            {{ formatChangePercent(insight.changePercent) }}
-          </span>
-        </div>
-        <div class="value">{{ formatNumber(insight.price, 2) }}</div>
-        <div class="mini-chart"></div>
-      </div>
-    </section>
+        <h2>EXTRA</h2>
+        <ul>
+          <li id="news-item"><span class="mdi mdi-newspaper"></span> News <span class="tag new">new</span></li>
+          <li><span class="mdi mdi-comment"></span> Feedback</li>
+        </ul>
+      </nav>
+    </aside>
 
-    <!-- Main Widgets Grid -->
-    <section class="widgets-grid">
-      <!-- Main Chart Widget -->
-      <div class="widget main-chart-widget">
-        <div class="tabs">
-          <span
-            v-for="tab in chartTabs"
-            :key="tab"
-            :class="['tab', { active: selectedChartTab === tab }]"
-            @click="selectChartTab(tab)"
-          >
-            {{ tab }}
-          </span>
+    <main class="dashboard-main-wrapper">
+      <!-- Dashboard Header -->
+      <header class="header">
+        <h1>Dashboard</h1>
+        <div class="search-bar">
+          <input type="text" placeholder="Search..." />
+          <span class="mdi mdi-magnify"></span>
         </div>
-        <div class="chart-area-container">
-          <canvas ref="mainChart" id="main-chart-canvas"></canvas>
+        <div class="user-actions">
+          <span class="mdi mdi-bell-outline"></span>
+          <span class="mdi mdi-account-circle user-avatar"></span>
         </div>
-        <div class="chart-footer">
-          <p>Total trade</p>
-          <p>Total volume</p>
-          <p>Total value</p>
-        </div>
-      </div>
+      </header>
 
-      <!-- Account Summary Widget -->
-      <div class="widget account-summary-widget">
-        <div class="widget-header">
-          <h2>Account Summary</h2>
-          <span class="mdi mdi-information-outline"></span>
-        </div>
-
-        <div v-if="account" class="account-info">
-          <div class="account-name">{{ account.email }}</div>
-        </div>
-
-        <div v-if="accountSummary" class="account-balance">
-          <div class="balance-title">Available Balance</div>
-          <div class="balance-value">
-            {{ formatNumber(accountSummary.account.balance.available, 2) }}
-            {{ accountCurrency }}
+      <!-- Chart Section -->
+      <section class="widgets-grid">
+        <div class="widget main-chart-widget">
+          <div class="tabs">
+            <span v-for="tab in chartTabs" :key="tab"
+                  :class="['tab', { active: selectedChartTab === tab }]"
+                  @click="selectChartTab(tab)">
+              {{ tab }}
+            </span>
+          </div>
+          <div class="chart-area-container">
+            <canvas ref="mainChart"></canvas>
+          </div>
+          <div class="chart-footer">
+            <p>Total trade</p><p>Total volume</p><p>Total value</p>
           </div>
         </div>
 
-        <div v-if="accountSummary" class="key-metrics">
-          <div class="metric">
-            <p>Portfolio Value</p>
-            <p class="value">
-              {{ formatNumber(accountSummary.totals.portfolioValue, 2) }}
-              {{ accountCurrency }}
-            </p>
-          </div>
-          <div class="metric">
-            <p>Equity</p>
-            <p class="value">
-              {{ formatNumber(accountSummary.totals.equity, 2) }}
-              {{ accountCurrency }}
-            </p>
+        <div class="widget">
+          <h2>Market Overview</h2>
+          <div class="top-insights-grid">
+            <div v-for="insight in marketInsights" :key="insight.symbol"
+                 :class="['insight-card', insight.changePercent >= 0 ? 'green-change' : 'red-change']"
+                 :data-symbol="insight.symbol">
+              <div class="title">
+                {{ insight.symbol }}
+                <span class="change-percent">{{ formatChangePercent(insight.changePercent) }}</span>
+              </div>
+              <div class="value">{{ formatNumber(insight.price, 2) }}</div>
+              <div class="mini-chart"></div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- Trading + Portfolio -->
-    <!-- (phần còn lại giữ nguyên như bản gốc của bạn, không thay đổi) -->
-  </main>
+      </section>
+    </main>
+  </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch, nextTick } from "vue";
-import apiClient from "../utils/api";
-import { sessionState } from "../stores/session";
-import { getCryptoPrices } from "@/utils/crypto"; // 🟢 thêm dòng này
+import { ref, onMounted, nextTick } from 'vue'
+import axios from 'axios'
 
-// ========== EXISTING CODE ==========
-const account = computed(() => sessionState.account);
-const accountSummary = ref(null);
-const instruments = ref([]);
-const selectedInstrumentId = ref("");
-const orderBook = ref({ bids: [], asks: [] });
-const orders = ref([]);
-const depositAmount = ref("");
-const withdrawAmount = ref("");
-const feedback = reactive({ success: "", error: "" });
-const loading = reactive({ deposit: false, withdraw: false, order: false });
+// Biểu đồ chính
+const mainChart = ref(null)
+let tradingChart = null
+const chartTabs = ['BTC', 'ETH', 'GOLD']
+const selectedChartTab = ref('BTC')
 
-const orderForm = reactive({
-  side: "BUY",
-  type: "LIMIT",
-  quantity: "",
-  price: "",
-  timeInForce: "GTC",
-});
+// API setup
+const API_KEY = import.meta.env.VITE_CMC_API_KEY
+const BASE_URL = import.meta.env.VITE_CMC_BASE_URL || 'https://pro-api.coinmarketcap.com'
 
-// Chart settings
-const mainChart = ref(null);
-const selectedChartTab = ref("DSEX");
-const chartTabs = ["DSEX", "DSES", "DS30"];
-let tradingChart = null;
+// Market data
+const marketInsights = ref([
+  { symbol: 'BTC', price: 0, changePercent: 0 },
+  { symbol: 'ETH', price: 0, changePercent: 0 },
+  { symbol: 'GOLD', price: 0, changePercent: 0 },
+])
 
-// 🟢 Market insights: now using API data
-const marketInsights = ref([]);
-
-const fetchMarketInsights = async () => {
-  try {
-    const data = await getCryptoPrices(["BTC", "ETH"]);
-    const cryptos = Object.entries(data).map(([symbol, val]) => ({
-      symbol,
-      price: val.quote.USD.price,
-      changePercent: val.quote.USD.percent_change_24h,
-    }));
-
-    // Add optional mock ones (for now)
-    marketInsights.value = [
-      { symbol: "GOLD", price: 2120.56, changePercent: -0.04 },
-      { symbol: "DOW", price: 32053.74, changePercent: 0.45 },
-      { symbol: "S&P500", price: 43003.06, changePercent: 0.47 },
-      { symbol: "NASDAQ", price: 6355.46, changePercent: 0.64 },
-      ...cryptos,
-    ];
-  } catch (error) {
-    console.error("Error fetching real market data:", error);
-  }
-};
-
-// ========== UTILITIES ==========
-const accountCurrency = computed(
-  () => accountSummary.value?.account?.currency ?? "USDT"
-);
 const formatNumber = (value, fractionDigits = 2) => {
-  const numeric = Number.parseFloat(value);
-  if (Number.isNaN(numeric)) return "0.00";
+  const numeric = Number.parseFloat(value)
+  if (Number.isNaN(numeric)) return '0.00'
   return numeric.toLocaleString(undefined, {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  });
-};
+  })
+}
+
 const formatChangePercent = (value) => {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
-};
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
 
-// ========== CHART + UI LOGIC ==========
-const loadChart = async (indexName) => {
-  await nextTick();
-  if (!mainChart.value) return;
-  if (tradingChart) tradingChart.destroy();
-
-  const { Chart, registerables } = await import("chart.js");
-  Chart.register(...registerables);
-
-  let chartData, chartBarColor;
-  if (indexName === "DSEX") {
-    chartData = [6000, 6100, 6050, 6150, 6120, 6200, 6148];
-    chartBarColor = "#00b050";
-  } else if (indexName === "DSES") {
-    chartData = [550, 580, 560, 590, 575, 610, 595];
-    chartBarColor = "#4a90e2";
-  } else {
-    chartData = [2100, 2150, 2080, 2200, 2180, 2250, 2210];
-    chartBarColor = "#ff9900";
+// Fetch giá thật từ CoinMarketCap
+const fetchRealPrice = async (symbol) => {
+  try {
+    const { data } = await axios.get(`${BASE_URL}/v1/cryptocurrency/quotes/latest`, {
+      params: { symbol, convert: 'USD' },
+      headers: { 'X-CMC_PRO_API_KEY': API_KEY },
+    })
+    return data.data[symbol].quote.USD.price
+  } catch (err) {
+    console.error(`Failed to fetch ${symbol}:`, err.message)
+    return null
   }
+}
 
-  const ctx = mainChart.value.getContext("2d");
+// Cập nhật dữ liệu biểu đồ chính
+const loadChart = async (symbol) => {
+  await nextTick()
+  if (!mainChart.value) return
+
+  if (tradingChart) tradingChart.destroy()
+
+  const { Chart, registerables } = await import('chart.js')
+  Chart.register(...registerables)
+
+  const price = await fetchRealPrice(symbol)
+  if (!price) return
+
+  const chartData = Array.from({ length: 7 }, () => {
+    const change = (Math.random() - 0.5) * 0.03
+    return +(price * (1 + change)).toFixed(2)
+  })
+  const chartColor =
+    symbol === 'BTC' ? '#00b050' :
+    symbol === 'ETH' ? '#4a90e2' :
+    '#ff9900'
+
+  const ctx = mainChart.value.getContext('2d')
   tradingChart = new Chart(ctx, {
-    type: "bar",
+    type: 'bar',
     data: {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"],
-      datasets: [
-        {
-          label: `${indexName} Price`,
-          data: chartData,
-          backgroundColor: chartBarColor,
-          borderRadius: 4,
-        },
-      ],
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
+      datasets: [{
+        label: `${symbol} Price`,
+        data: chartData,
+        backgroundColor: chartColor,
+        borderRadius: 4,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { mode: "index" } },
+      plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#fff" } },
-        y: { grid: { color: "#27293d" }, ticks: { color: "#fff" } },
+        x: { grid: { display: false }, ticks: { color: '#FFF' } },
+        y: { grid: { color: '#333' }, ticks: { color: '#FFF' } },
       },
     },
-  });
-};
+  })
+}
 
 const selectChartTab = (tab) => {
-  selectedChartTab.value = tab;
-  loadChart(tab);
-};
+  selectedChartTab.value = tab
+  loadChart(tab)
+}
 
-// ========== LIFECYCLE ==========
+// Mini chart ngẫu nhiên
+const drawMiniChart = async (element, isPositive) => {
+  if (!element) return
+  const { Chart, registerables } = await import('chart.js')
+  Chart.register(...registerables)
+
+  let canvas = element.querySelector('canvas')
+  if (!canvas) {
+    canvas = document.createElement('canvas')
+    canvas.width = 100
+    canvas.height = 30
+    element.appendChild(canvas)
+  } else {
+    const existing = Chart.getChart(canvas)
+    if (existing) existing.destroy()
+  }
+
+  const data = Array.from({ length: 15 }, () => 100 + Math.random() * 10)
+  const chartColor = isPositive ? '#00b050' : '#e53935'
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: Array(15).fill(''),
+      datasets: [{
+        data,
+        borderColor: chartColor,
+        borderWidth: 2,
+        tension: 0.6,
+        fill: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      elements: { point: { radius: 0 } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } },
+    },
+  })
+}
+
+// Cập nhật liên tục Market Data + Mini chart
+const updateMarketData = async () => {
+  for (const item of marketInsights.value) {
+    const newPrice = await fetchRealPrice(item.symbol)
+    if (newPrice) {
+      const changePercent = ((newPrice - item.price) / (item.price || newPrice)) * 100
+      item.price = newPrice
+      item.changePercent = isNaN(changePercent) ? 0 : changePercent
+    }
+  }
+
+  nextTick(() => {
+    marketInsights.value.forEach((insight) => {
+      const el = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
+      if (el) drawMiniChart(el, insight.changePercent >= 0)
+    })
+  })
+}
+
 onMounted(async () => {
-  await fetchMarketInsights(); // 🟢 Fetch real data here
-  await nextTick();
-  await loadChart(selectedChartTab.value);
+  await loadChart(selectedChartTab.value)
+  await updateMarketData()
 
-  setInterval(async () => { // 🟢 Refresh market insights every 1.5 minutes
-    await fetchMarketInsights()
+  // ⏱ Cập nhật mỗi 1.5 giây
+  setInterval(() => {
+    loadChart(selectedChartTab.value)
+    updateMarketData()
   }, 1500)
-});
+})
 </script>
 <style scoped>
 /* Import Font Awesome */

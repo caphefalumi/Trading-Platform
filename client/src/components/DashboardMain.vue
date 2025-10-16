@@ -4,7 +4,7 @@
     <header class="header">
       <h1>Dashboard</h1>
       <div class="search-bar">
-        <input type="text" placeholder="Search" />
+        <input type="text" placeholder="Search">
         <span class="mdi mdi-magnify"></span>
       </div>
       <div class="user-actions">
@@ -26,157 +26,655 @@
 
     <!-- Market Insights Grid -->
     <section class="top-insights-grid">
-      <div
-        v-for="insight in marketInsights"
-        :key="insight.symbol"
-        :class="[
-          'insight-card',
-          insight.changePercent >= 0 ? 'green-change' : 'red-change',
-        ]"
-        :data-symbol="insight.symbol"
-      >
+      <div v-for="insight in marketInsights" :key="insight.symbol"
+           :class="['insight-card', insight.changePercent >= 0 ? 'green-change' : 'red-change']"
+           :data-symbol="insight.symbol">
         <div class="title">
           {{ insight.symbol }}
-          <span class="change-percent">
-            {{ formatChangePercent(insight.changePercent) }}
-          </span>
+          <span class="change-percent">{{ formatChangePercent(insight.changePercent) }}</span>
         </div>
         <div class="value">{{ formatNumber(insight.price, 2) }}</div>
         <div class="mini-chart"></div>
       </div>
     </section>
 
-    <!-- Keep everything else same -->
-    <DashboardMain />
+    <!-- Main Widgets Grid -->
+    <section class="widgets-grid">
+      <!-- Main Chart Widget -->
+      <div class="widget main-chart-widget">
+        <div class="tabs">
+          <span v-for="tab in chartTabs" :key="tab"
+                :class="['tab', { active: selectedChartTab === tab }]"
+                @click="selectChartTab(tab)">
+            {{ tab }}
+          </span>
+        </div>
+        <div class="chart-area-container">
+          <canvas ref="mainChart" id="main-chart-canvas"></canvas>
+        </div>
+        <div class="chart-footer">
+          <p>Total trade</p><p>Total volume</p><p>Total value</p>
+        </div>
+      </div>
+
+      <!-- Account Summary Widget -->
+      <div class="widget account-summary-widget">
+        <div class="widget-header">
+          <h2>Account Summary</h2>
+          <span class="mdi mdi-information-outline"></span>
+        </div>
+
+        <div v-if="account" class="account-info">
+          <div class="account-name">{{ account.email }}</div>
+        </div>
+
+        <div v-if="accountSummary" class="account-balance">
+          <div class="balance-title">Available Balance</div>
+          <div class="balance-value">
+            {{ formatNumber(accountSummary.account.balance.available, 2) }} {{ accountCurrency }}
+          </div>
+        </div>
+
+        <div v-if="accountSummary" class="key-metrics">
+          <div class="metric">
+            <p>Portfolio Value</p>
+            <p class="value">{{ formatNumber(accountSummary.totals.portfolioValue, 2) }} {{ accountCurrency }}</p>
+          </div>
+          <div class="metric">
+            <p>Equity</p>
+            <p class="value">{{ formatNumber(accountSummary.totals.equity, 2) }} {{ accountCurrency }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trading and Portfolio Section -->
+    <section class="trading-section">
+      <!-- Order Entry Card -->
+      <div class="trading-card order-entry-card">
+        <div class="card-header">
+          <h3>Order Entry</h3>
+          <div class="order-side-toggle">
+            <button :class="['side-btn', { active: orderForm.side === 'BUY' }]"
+                    @click="orderForm.side = 'BUY'">Buy</button>
+            <button :class="['side-btn', { active: orderForm.side === 'SELL' }]"
+                    @click="orderForm.side = 'SELL'">Sell</button>
+          </div>
+        </div>
+
+        <form @submit.prevent="placeOrder" class="order-form">
+          <div class="form-group">
+            <label>Instrument</label>
+            <select v-model="selectedInstrumentId" class="form-select">
+              <option v-for="instrument in instruments" :key="instrument.id" :value="instrument.id">
+                {{ instrument.symbol }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Order Type</label>
+            <select v-model="orderForm.type" class="form-select">
+              <option value="MARKET">Market</option>
+              <option value="LIMIT">Limit</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Quantity</label>
+              <input v-model="orderForm.quantity" type="number" step="0.0001" min="0" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label>Price</label>
+              <input v-model="orderForm.price" type="number" step="0.01" min="0"
+                     :disabled="orderForm.type === 'MARKET'" class="form-input">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Time in Force</label>
+            <select v-model="orderForm.timeInForce" class="form-select">
+              <option value="GTC">GTC</option>
+              <option value="IOC">IOC</option>
+              <option value="FOK">FOK</option>
+            </select>
+          </div>
+
+          <button type="submit"
+                  :class="['submit-btn', orderForm.side.toLowerCase()]"
+                  :disabled="loading.order">
+            <span v-if="loading.order" class="loading-spinner"></span>
+            {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Deposit/Withdraw Card -->
+      <div class="trading-card balance-card">
+        <div class="balance-actions">
+          <div class="action-section">
+            <h3>Deposit</h3>
+            <form @submit.prevent="submitDeposit" class="balance-form">
+              <div class="form-group">
+                <input v-model="depositAmount" type="number" step="0.01" min="0"
+                       :placeholder="`Amount in ${accountCurrency}`" class="form-input">
+              </div>
+              <button type="submit" :disabled="loading.deposit" class="action-btn deposit-btn">
+                <span v-if="loading.deposit" class="loading-spinner"></span>
+                Deposit
+              </button>
+            </form>
+          </div>
+
+          <div class="action-section">
+            <h3>Withdraw</h3>
+            <form @submit.prevent="submitWithdraw" class="balance-form">
+              <div class="form-group">
+                <input v-model="withdrawAmount" type="number" step="0.01" min="0"
+                       :placeholder="`Amount in ${accountCurrency}`" class="form-input">
+              </div>
+              <button type="submit" :disabled="loading.withdraw" class="action-btn withdraw-btn">
+                <span v-if="loading.withdraw" class="loading-spinner"></span>
+                Withdraw
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Order Book and Orders Section -->
+    <section class="data-section">
+      <!-- Order Book -->
+      <div class="data-card order-book-card">
+        <h3>Order Book - {{ selectedInstrument?.symbol || 'Select Instrument' }}</h3>
+
+        <div class="order-book">
+          <div class="asks-section">
+            <div class="section-title">Asks</div>
+            <div class="order-book-table">
+              <div class="table-header">
+                <span>Price</span>
+                <span>Quantity</span>
+              </div>
+              <div v-for="ask in orderBook.asks" :key="ask.id" class="table-row ask-row">
+                <span class="price">{{ formatNumber(ask.price, 2) }}</span>
+                <span class="quantity">{{ formatNumber(ask.quantity, 4) }}</span>
+              </div>
+              <div v-if="!orderBook.asks.length" class="empty-message">No asks available</div>
+            </div>
+          </div>
+
+          <div class="bids-section">
+            <div class="section-title">Bids</div>
+            <div class="order-book-table">
+              <div class="table-header">
+                <span>Price</span>
+                <span>Quantity</span>
+              </div>
+              <div v-for="bid in orderBook.bids" :key="bid.id" class="table-row bid-row">
+                <span class="price">{{ formatNumber(bid.price, 2) }}</span>
+                <span class="quantity">{{ formatNumber(bid.quantity, 4) }}</span>
+              </div>
+              <div v-if="!orderBook.bids.length" class="empty-message">No bids available</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orders -->
+      <div class="data-card orders-card">
+        <h3>My Orders</h3>
+        <div class="orders-table">
+          <div class="table-header">
+            <span>Instrument</span>
+            <span>Side</span>
+            <span>Type</span>
+            <span>Price</span>
+            <span>Quantity</span>
+            <span>Filled</span>
+            <span>Status</span>
+          </div>
+          <div v-for="order in orders" :key="order.id" class="table-row">
+            <span>{{ order.instrument?.symbol }}</span>
+            <span :class="['side', order.side.code.toLowerCase()]">{{ order.side.code }}</span>
+            <span>{{ order.type.code }}</span>
+            <span>{{ order.price ? formatNumber(order.price, 2) : '-' }}</span>
+            <span>{{ formatNumber(order.quantity, 4) }}</span>
+            <span>{{ formatNumber(order.filledQuantity, 4) }}</span>
+            <span>{{ order.status.code }}</span>
+          </div>
+          <div v-if="!orders.length" class="empty-message">No orders yet</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Portfolio Section -->
+    <section class="portfolio-section">
+      <div class="data-card portfolio-card">
+        <h3>Portfolio</h3>
+        <div class="portfolio-table">
+          <div class="table-header">
+            <span>Symbol</span>
+            <span>Quantity</span>
+            <span>Average Price</span>
+            <span>Mark Price</span>
+            <span>Market Value</span>
+          </div>
+          <div v-for="holding in accountSummary?.portfolio ?? []" :key="holding.instrumentId" class="table-row">
+            <span>{{ holding.symbol }}</span>
+            <span>{{ formatNumber(holding.quantity, 4) }}</span>
+            <span>{{ formatNumber(holding.averagePrice, 2) }}</span>
+            <span>{{ formatNumber(holding.markPrice, 2) }}</span>
+            <span>{{ formatNumber(holding.marketValue, 2) }}</span>
+          </div>
+          <div v-if="!accountSummary?.portfolio?.length" class="empty-message">No positions</div>
+        </div>
+      </div>
+    </section>
   </main>
 </template>
-
 <script setup>
-import DashboardMain from "../components/DashboardMain.vue";
-import { onMounted, reactive, ref, nextTick } from "vue";
-import axios from "axios";
+import DashboardMain from '../components/DashboardMain.vue'
+import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
+import apiClient from '../utils/api'
+import { sessionState } from '../stores/session'
 
-const feedback = reactive({ success: "", error: "" });
-const marketInsights = ref([]);
+const account = computed(() => sessionState.account)
+const accountSummary = ref(null)
+const instruments = ref([])
+const selectedInstrumentId = ref('')
+const orderBook = ref({ bids: [], asks: [] })
+const orders = ref([])
+const depositAmount = ref('')
+const withdrawAmount = ref('')
 
-const BASE_URL = "https://pro-api.coinmarketcap.com";
-const API_KEY = import.meta.env.VITE_COINMARKETCAP_API_KEY;
+const orderForm = reactive({
+  side: 'BUY',
+  type: 'LIMIT',
+  quantity: '',
+  price: '',
+  timeInForce: 'GTC',
+})
 
-// ===== Helper functions =====
+const feedback = reactive({ success: '', error: '' })
+const loading = reactive({ deposit: false, withdraw: false, order: false })
+
+// New dashboard features
+const mainChart = ref(null)
+const selectedChartTab = ref('DSEX')
+const chartTabs = ['DSEX', 'DSES', 'DS30']
+let tradingChart = null
+
+// Market insights data
+const marketInsights = ref([
+  { symbol: 'GOLD', price: 2120.56, changePercent: -0.04 },
+  { symbol: 'DOW', price: 32053.74, changePercent: 0.45 },
+  { symbol: 'S&P500', price: 43003.06, changePercent: 0.47 },
+  { symbol: 'NASDAQ', price: 6355.46, changePercent: 0.64 },
+  { symbol: 'BTC', price: 28450.23, changePercent: 0.49 },
+  { symbol: 'ETH', price: 1850.74, changePercent: 0.50 }
+])
+
+const accountCurrency = computed(() => accountSummary.value?.account?.currency ?? 'USDT')
+const selectedInstrument = computed(
+  () =>
+    instruments.value.find((instrument) => instrument.id === selectedInstrumentId.value) || null,
+)
+const orderButtonColor = computed(() => (orderForm.side === 'BUY' ? 'success' : 'error'))
+const orderButtonLabel = computed(() => (orderForm.side === 'BUY' ? 'Buy' : 'Sell'))
+
 const formatNumber = (value, fractionDigits = 2) => {
-  const numeric = Number.parseFloat(value);
-  if (Number.isNaN(numeric)) return "0.00";
+  const numeric = Number.parseFloat(value)
+  if (Number.isNaN(numeric)) return '0.00'
   return numeric.toLocaleString(undefined, {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  });
-};
+  })
+}
 
 const formatChangePercent = (value) => {
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
-};
+  const sign = value >= 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
 
-// ===== Fetch CoinMarketCap real-time data =====
-const fetchCryptoPrices = async (symbols = ["BTC", "ETH"]) => {
-  try {
-    const { data } = await axios.get(
-      `${BASE_URL}/v1/cryptocurrency/quotes/latest`,
-      {
-        params: { symbol: symbols.join(","), convert: "USD" },
-        headers: { "X-CMC_PRO_API_KEY": API_KEY },
-      }
-    );
-    return data.data;
-  } catch (err) {
-    console.error("Error fetching crypto data:", err);
-    return null;
+// Chart functionality
+const loadChart = async (indexName) => {
+  await nextTick()
+
+  if (!mainChart.value) return
+
+  // Destroy existing chart
+  if (tradingChart) {
+    tradingChart.destroy()
   }
-};
 
-// ===== Draw mini line charts for each card =====
-const drawMiniChart = async (element, isPositive) => {
-  if (!element) return;
+  // Import Chart.js dynamically
+  const { Chart, registerables } = await import('chart.js')
+  Chart.register(...registerables)
 
-  const { Chart, registerables } = await import("chart.js");
-  Chart.register(...registerables);
+  let chartData, chartBarColor
 
-  let canvas = element.querySelector("canvas");
-  if (!canvas) {
-    canvas = document.createElement("canvas");
-    canvas.width = 100;
-    canvas.height = 30;
-    element.appendChild(canvas);
+  if (indexName === 'DSEX') {
+    chartData = [6000, 6100, 6050, 6150, 6120, 6200, 6148]
+    chartBarColor = '#00b050'
+  } else if (indexName === 'DSES') {
+    chartData = [550, 580, 560, 590, 575, 610, 595]
+    chartBarColor = '#4a90e2'
   } else {
-    const existing = Chart.getChart(canvas);
-    if (existing) existing.destroy();
+    chartData = [2100, 2150, 2080, 2200, 2180, 2250, 2210]
+    chartBarColor = '#ff9900'
   }
 
-  const data = Array.from({ length: 15 }, () => Math.random() * 10 + 80);
-  const color = isPositive ? "#00b050" : "#FF3B30";
+  const ctx = mainChart.value.getContext('2d')
 
-  new Chart(canvas.getContext("2d"), {
-    type: "line",
+  tradingChart = new Chart(ctx, {
+    type: 'bar',
     data: {
-      labels: Array(15).fill(""),
-      datasets: [
-        {
-          data,
-          borderColor: color,
-          borderWidth: 2,
-          tension: 0.6,
-          fill: false,
-          backgroundColor: "transparent",
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
+      datasets: [{
+        label: `${indexName} Price`,
+        data: chartData,
+        backgroundColor: chartBarColor,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#FFFFFF' }
         },
-      ],
+        y: {
+          grid: { color: '#27293d' },
+          ticks: { color: '#FFFFFF' }
+        }
+      }
+    }
+  })
+}
+
+const selectChartTab = (tab) => {
+  selectedChartTab.value = tab
+  loadChart(tab)
+}
+
+const drawMiniChart = async (element, isPositive) => {
+  if (!element) return
+
+  const { Chart, registerables } = await import('chart.js')
+  Chart.register(...registerables)
+
+  let canvas = element.querySelector('canvas')
+
+  if (!canvas) {
+    canvas = document.createElement('canvas')
+    canvas.width = 100
+    canvas.height = 30
+    element.appendChild(canvas)
+  } else {
+    const existingChart = Chart.getChart(canvas)
+    if (existingChart) {
+      existingChart.destroy()
+    }
+  }
+
+  const data = Array.from({ length: 15 }, () => (Math.random() * 10) + 80)
+  const chartColor = isPositive ? '#00b050' : '#FF3B30'
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: Array(15).fill(''),
+      datasets: [{
+        data: data,
+        borderColor: chartColor,
+        borderWidth: 2,
+        tension: 0.6,
+        fill: false,
+        backgroundColor: 'transparent',
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       elements: { point: { radius: 0 } },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { x: { display: false }, y: { display: false } },
-    },
-  });
-};
+      scales: { x: { display: false }, y: { display: false } }
+    }
+  })
+}
 
-// ===== Update all market data (real crypto + static indexes) =====
-const updateMarketData = async () => {
-  const realData = await fetchCryptoPrices(["BTC", "ETH"]);
-  const cryptos = realData
-    ? Object.keys(realData).map((symbol) => ({
-        symbol,
-        price: realData[symbol].quote.USD.price,
-        changePercent: realData[symbol].quote.USD.percent_change_24h,
-      }))
-    : [];
+const updateMarketData = () => {
+  marketInsights.value.forEach((insight, index) => {
+    const changePercent = (Math.random() - 0.5) * 1.5
+    const newPrice = insight.price * (1 + changePercent / 100)
 
-  marketInsights.value = [
-    { symbol: "GOLD", price: 2120.56, changePercent: -0.04 },
-    { symbol: "DOW", price: 32053.74, changePercent: 0.45 },
-    { symbol: "S&P500", price: 43003.06, changePercent: 0.47 },
-    { symbol: "NASDAQ", price: 6355.46, changePercent: 0.64 },
-    ...cryptos,
-  ];
+    marketInsights.value[index] = {
+      ...insight,
+      price: newPrice,
+      changePercent
+    }
+  })
 
-  // Refresh mini charts
+  // Update mini charts
   nextTick(() => {
-    marketInsights.value.forEach((i) => {
-      const el = document.querySelector(
-        `[data-symbol="${i.symbol}"] .mini-chart`
-      );
-      if (el) drawMiniChart(el, i.changePercent >= 0);
-    });
-  });
-};
+    marketInsights.value.forEach((insight) => {
+      const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
+      if (element) {
+        drawMiniChart(element, insight.changePercent >= 0)
+      }
+    })
+  })
+}
 
-// ===== Run once + schedule every 1.5s =====
+const setSuccess = (message) => {
+  feedback.success = message
+  feedback.error = ''
+}
+
+const setError = (message) => {
+  feedback.error = message
+  feedback.success = ''
+}
+
+const resetOrderForm = () => {
+  orderForm.quantity = ''
+  orderForm.price = ''
+}
+
+const resetDashboardState = () => {
+  accountSummary.value = null
+  orders.value = []
+  depositAmount.value = ''
+  withdrawAmount.value = ''
+  orderBook.value = { bids: [], asks: [] }
+  feedback.success = ''
+  feedback.error = ''
+  resetOrderForm()
+}
+
+const fetchInstruments = async () => {
+  try {
+    const { data } = await apiClient.get('/api/instruments')
+    instruments.value = data
+    if (!selectedInstrumentId.value && data.length) {
+      selectedInstrumentId.value = data[0].id
+    }
+  } catch (error) {
+    setError(error.response?.data?.error || 'Unable to load instruments')
+  }
+}
+
+const fetchAccountSummary = async () => {
+  if (!account.value?.id) return
+  try {
+    const { data } = await apiClient.get(`/api/accounts/${account.value.id}/summary`)
+    accountSummary.value = data
+  } catch (error) {
+    setError(error.response?.data?.error || 'Unable to load account summary')
+  }
+}
+
+const fetchOrders = async () => {
+  if (!account.value?.id) return
+  try {
+    const { data } = await apiClient.get(`/api/orders/account/${account.value.id}`)
+    orders.value = data
+  } catch (error) {
+    setError(error.response?.data?.error || 'Unable to load orders')
+  }
+}
+
+const fetchOrderBook = async () => {
+  if (!selectedInstrumentId.value) return
+  try {
+    const { data } = await apiClient.get(`/api/orders/book/${selectedInstrumentId.value}`)
+    orderBook.value = data
+  } catch (error) {
+    setError(error.response?.data?.error || 'Unable to load order book')
+  }
+}
+
+const submitDeposit = async () => {
+  if (!account.value?.id) return setError('Account not found')
+  const amount = Number.parseFloat(depositAmount.value)
+  if (!amount || amount <= 0) {
+    setError('Enter a valid deposit amount')
+    return
+  }
+  loading.deposit = true
+  try {
+    await apiClient.post(`/api/accounts/${account.value.id}/deposit`, { amount })
+    setSuccess('Deposit completed')
+    depositAmount.value = ''
+    await Promise.all([fetchAccountSummary(), fetchOrders()])
+  } catch (error) {
+    setError(error.response?.data?.error || 'Deposit failed')
+  } finally {
+    loading.deposit = false
+  }
+}
+
+const submitWithdraw = async () => {
+  if (!account.value?.id) return setError('Account not found')
+  const amount = Number.parseFloat(withdrawAmount.value)
+  if (!amount || amount <= 0) {
+    setError('Enter a valid withdrawal amount')
+    return
+  }
+  loading.withdraw = true
+  try {
+    await apiClient.post(`/api/accounts/${account.value.id}/withdraw`, { amount })
+    setSuccess('Withdrawal completed')
+    withdrawAmount.value = ''
+    await Promise.all([fetchAccountSummary(), fetchOrders()])
+  } catch (error) {
+    setError(error.response?.data?.error || 'Withdrawal failed')
+  } finally {
+    loading.withdraw = false
+  }
+}
+
+const placeOrder = async () => {
+  if (!account.value?.id || !selectedInstrumentId.value) {
+    setError('Select instrument first')
+    return
+  }
+  const quantity = Number.parseFloat(orderForm.quantity)
+  if (!quantity || quantity <= 0) {
+    setError('Enter a valid quantity')
+    return
+  }
+  const payload = {
+    accountId: account.value.id,
+    instrumentId: selectedInstrumentId.value,
+    side: orderForm.side,
+    type: orderForm.type,
+    quantity,
+    timeInForce: orderForm.timeInForce,
+  }
+  if (orderForm.type === 'LIMIT') {
+    const price = Number.parseFloat(orderForm.price)
+    if (!price || price <= 0) {
+      setError('Enter a valid limit price')
+      return
+    }
+    payload.price = price
+  }
+
+  loading.order = true
+  try {
+    await apiClient.post('/api/orders', payload)
+    setSuccess('Order submitted')
+    resetOrderForm()
+    await Promise.all([fetchAccountSummary(), fetchOrders(), fetchOrderBook()])
+  } catch (error) {
+    setError(error.response?.data?.error || 'Order placement failed')
+  } finally {
+    loading.order = false
+  }
+}
+
+watch(
+  () => account.value?.id,
+  async (accountId) => {
+    if (accountId) {
+      await Promise.all([fetchAccountSummary(), fetchOrders()])
+    } else {
+      resetDashboardState()
+    }
+  },
+  { immediate: true },
+)
+
+watch(selectedInstrumentId, async (instrumentId) => {
+  if (!instrumentId) {
+    orderBook.value = { bids: [], asks: [] }
+    return
+  }
+  await fetchOrderBook()
+})
+
 onMounted(async () => {
-  await updateMarketData();
-  setInterval(updateMarketData, 1500);
-});
-</script>
+  await fetchInstruments()
+  if (selectedInstrumentId.value) {
+    await fetchOrderBook()
+  }
 
+  // Initialize dashboard features
+  await nextTick()
+  await loadChart(selectedChartTab.value)
+  updateMarketData()
+
+  // Update market data periodically
+  setInterval(updateMarketData, 5000)
+
+  // Initialize menu interactivity
+  initializeMenuInteractivity()
+})
+
+const initializeMenuInteractivity = () => {
+  const menuItems = document.querySelectorAll('.menu li')
+  menuItems.forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.menu li.active').forEach(i => i.classList.remove('active'))
+      this.classList.add('active')
+
+      const page = this.getAttribute('data-page')
+      console.log(`Navigating to: ${page}`)
+    })
+  })
+}
+</script>
 <style scoped>
 /* Import Font Awesome */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');

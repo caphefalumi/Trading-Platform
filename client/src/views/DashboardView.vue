@@ -34,7 +34,6 @@
 </template>
 <script setup>
 import DashboardMain from '@/components/DashboardMain.vue'
-import '../script.js'
 </script>
 
 <style scoped>

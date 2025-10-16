@@ -10,7 +10,7 @@
           <li><span class="mdi mdi-calculator"></span> Income estimator</li>
           <li><span class="mdi mdi-chart-bar"></span> Interactive chart</li>
           <li><span class="mdi mdi-hand-coin"></span> Mutual funds</li>
-          <li><span class="mdi mdi-robot"></span> Vocer</li>
+          <li><span class="mdi mdi-rosbot"></span> Vocer</li>
         </ul>
 
         <h2>ACCOUNT</h2>

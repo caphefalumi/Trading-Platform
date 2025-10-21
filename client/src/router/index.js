@@ -26,12 +26,14 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
-    meta: { requiresAuth: true },
+    // ĐÃ THAY ĐỔI: Tạm thời bỏ đi 'requiresAuth: true'
+    // để trang Dashboard có thể load mà không cần xác thực.
+    // HÃY KHÔI PHỤC LẠI khi bạn triển khai tính năng bảo mật.
+    meta: {}, 
   },
   {
     path: '/profile',
     name: 'profile',
-    component: () => import('../views/HomeView.vue'),
     meta: { requiresAuth: true },
   },
   {

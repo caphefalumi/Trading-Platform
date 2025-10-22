@@ -2,8 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import MarketDataView from '../views/MarketDataView.vue'
+import TradeView from '../views/TradeView.vue'
 import { sessionState, initSession, clearUser } from '../stores/session'
-import apiClient from '../utils/api'
 
 const routes = [
   {
@@ -30,6 +31,18 @@ const routes = [
     // để trang Dashboard có thể load mà không cần xác thực.
     // HÃY KHÔI PHỤC LẠI khi bạn triển khai tính năng bảo mật.
     meta: {}, 
+  },
+  {
+    path: '/market',
+    name: 'market-data',
+    component: MarketDataView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/trade',
+    name: 'trade',
+    component: TradeView,
+    meta: { requiresAuth: true },
   },
   {
     path: '/profile',

@@ -1,9 +1,8 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../utils/prisma.js'
-import 'crypto'
+import crypto from 'crypto'
 import { Prisma } from '@prisma/client'
 import { createSession, deleteSession } from '../utils/session.js'
-import 'crypto'
 // Input validation helpers
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -176,7 +175,7 @@ export const oauthGoogle = async (req, res) => {
         account = await tx.account.create({
           data: {
             email: email.toLowerCase(),
-            currencyId: currency.id,
+            baseCurrencyId: currency.id,
             password: bcrypt.hashSync(crypto.randomUUID(), 10)
           },
         })
@@ -184,6 +183,7 @@ export const oauthGoogle = async (req, res) => {
         await tx.accountBalance.create({
           data: {
             accountId: account.id,
+            currencyId: currency.id,
             available: new Prisma.Decimal(0),
             reserved: new Prisma.Decimal(0),
             total: new Prisma.Decimal(0),

@@ -274,6 +274,30 @@
         </div>
       </div>
     </section>
+
+    <!-- Recent Executions Section -->
+    <section class="portfolio-section">
+      <div class="data-card executions-card">
+        <h3>Recent Executions</h3>
+        <div class="portfolio-table">
+          <div class="table-header">
+            <span>Instrument</span>
+            <span>Side</span>
+            <span>Price</span>
+            <span>Quantity</span>
+            <span>Time</span>
+          </div>
+          <div v-for="execution in executions" :key="execution.id" class="table-row">
+            <span>{{ execution.instrument?.symbol }}</span>
+            <span :class="['side', execution.side.code.toLowerCase()]">{{ execution.side.code }}</span>
+            <span>{{ formatNumber(execution.price, 2) }}</span>
+            <span>{{ formatNumber(execution.quantity, 4) }}</span>
+            <span>{{ new Date(execution.timestamp).toLocaleString() }}</span>
+          </div>
+          <div v-if="!executions.length" class="empty-message">No recent executions</div>
+        </div>
+      </div>
+    </section>
   </main>
 </template>
 <script setup>
@@ -290,6 +314,7 @@ const orderBook = ref({ bids: [], asks: [] })
 const orders = ref([])
 const depositAmount = ref('')
 const withdrawAmount = ref('')
+const executions = ref([])
 
 const orderForm = reactive({
   side: 'BUY',
@@ -497,6 +522,7 @@ const resetDashboardState = () => {
   depositAmount.value = ''
   withdrawAmount.value = ''
   orderBook.value = { bids: [], asks: [] }
+  executions.value = []
   feedback.success = ''
   feedback.error = ''
   resetOrderForm()
@@ -541,6 +567,16 @@ const fetchOrderBook = async () => {
     orderBook.value = data
   } catch (error) {
     setError(error.response?.data?.error || 'Unable to load order book')
+  }
+}
+
+const fetchExecutions = async () => {
+  if (!account.value?.id) return
+  try {
+    const { data } = await apiClient.get(`/api/executions/account/${account.value.id}`)
+    executions.value = data
+  } catch (err) {
+    console.error('Failed to load executions', err)
   }
 }
 
@@ -616,7 +652,7 @@ const placeOrder = async () => {
     await apiClient.post('/api/orders', payload)
     setSuccess('Order submitted')
     resetOrderForm()
-    await Promise.all([fetchAccountSummary(), fetchOrders(), fetchOrderBook()])
+    await Promise.all([fetchAccountSummary(), fetchOrders(), fetchOrderBook(), fetchExecutions()])
   } catch (error) {
     setError(error.response?.data?.error || 'Order placement failed')
   } finally {
@@ -628,7 +664,7 @@ watch(
   () => account.value?.id,
   async (accountId) => {
     if (accountId) {
-      await Promise.all([fetchAccountSummary(), fetchOrders()])
+      await Promise.all([fetchAccountSummary(), fetchOrders(), fetchExecutions()])
     } else {
       resetDashboardState()
     }
@@ -657,6 +693,12 @@ onMounted(async () => {
 
   // Update market data periodically
   setInterval(updateMarketData, 5000)
+
+  // Also refresh executions periodically
+  setInterval(() => {
+    fetchExecutions()
+    fetchOrders()
+  }, 3000)
 
   // Initialize menu interactivity
   initializeMenuInteractivity()
@@ -1316,3 +1358,4 @@ const initializeMenuInteractivity = () => {
   }
 }
 </style>
+```

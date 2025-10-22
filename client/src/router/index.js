@@ -26,10 +26,7 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
-    // ĐÃ THAY ĐỔI: Tạm thời bỏ đi 'requiresAuth: true'
-    // để trang Dashboard có thể load mà không cần xác thực.
-    // HÃY KHÔI PHỤC LẠI khi bạn triển khai tính năng bảo mật.
-    meta: {}, 
+    meta: { requiresAuth: true },
   },
   {
     path: '/profile',

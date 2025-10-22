@@ -55,38 +55,8 @@
         <div class="chart-footer">
           <p>Total trade</p><p>Total volume</p><p>Total value</p>
         </div>
-      </div>
-
-      <!-- Account Summary Widget -->
-      <div class="widget account-summary-widget">
-        <div class="widget-header">
-          <h2>Account Summary</h2>
-          <span class="mdi mdi-information-outline"></span>
-        </div>
-
-        <div v-if="account" class="account-info">
-          <div class="account-name">{{ account.email }}</div>
-        </div>
-
-        <div v-if="accountSummary" class="account-balance">
-          <div class="balance-title">Available Balance</div>
-          <div class="balance-value">
-            {{ formatNumber(accountSummary.account.balance.available, 2) }} {{ accountCurrency }}
-          </div>
-        </div>
-
-        <div v-if="accountSummary" class="key-metrics">
-          <div class="metric">
-            <p>Portfolio Value</p>
-            <p class="value">{{ formatNumber(accountSummary.totals.portfolioValue, 2) }} {{ accountCurrency }}</p>
-          </div>
-          <div class="metric">
-            <p>Equity</p>
-            <p class="value">{{ formatNumber(accountSummary.totals.equity, 2) }} {{ accountCurrency }}</p>
-          </div>
-        </div>
-      </div>
-    </section>
+      </div>      
+     </section>
 
     <!-- Trading and Portfolio Section -->
     <section class="trading-section">
@@ -95,10 +65,10 @@
         <div class="card-header">
           <h3>Order Entry</h3>
           <div class="order-side-toggle">
-            <button :class="['side-btn', { active: orderForm.side === 'BUY' }]"
-                    @click="orderForm.side = 'BUY'">Buy</button>
-            <button :class="['side-btn', { active: orderForm.side === 'SELL' }]"
-                    @click="orderForm.side = 'SELL'">Sell</button>
+                <button :class="['side-btn', 'buy', { active: orderForm.side === 'BUY' }]"
+            @click="orderForm.side = 'BUY'">Buy</button>
+               <button :class="['side-btn', 'sell', { active: orderForm.side === 'SELL' }]"
+            @click="orderForm.side = 'SELL'">Sell</button>
           </div>
         </div>
 
@@ -161,10 +131,12 @@
                 <input v-model="depositAmount" type="number" step="0.01" min="0"
                        :placeholder="`Amount in ${accountCurrency}`" class="form-input">
               </div>
-              <button type="submit" :disabled="loading.deposit" class="action-btn deposit-btn">
-                <span v-if="loading.deposit" class="loading-spinner"></span>
-                Deposit
-              </button>
+              <button type="submit"
+                :class="['submit-btn', orderForm.side.toLowerCase()]"
+                :disabled="loading.order">
+                <span v-if="loading.order" class="loading-spinner"></span>
+                    {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
+               </button>
             </form>
           </div>
 
@@ -283,11 +255,11 @@ import apiClient from '../utils/api'
 import { sessionState } from '../stores/session'
 
 const account = computed(() => sessionState.account)
-const accountSummary = ref(null)
 const instruments = ref([])
 const selectedInstrumentId = ref('')
 const orderBook = ref({ bids: [], asks: [] })
 const orders = ref([])
+const accountCurrency = ref('USDT')
 const depositAmount = ref('')
 const withdrawAmount = ref('')
 
@@ -310,15 +282,10 @@ let tradingChart = null
 
 // Market insights data
 const marketInsights = ref([
-  { symbol: 'GOLD', price: 2120.56, changePercent: -0.04 },
-  { symbol: 'DOW', price: 32053.74, changePercent: 0.45 },
-  { symbol: 'S&P500', price: 43003.06, changePercent: 0.47 },
-  { symbol: 'NASDAQ', price: 6355.46, changePercent: 0.64 },
   { symbol: 'BTC', price: 28450.23, changePercent: 0.49 },
   { symbol: 'ETH', price: 1850.74, changePercent: 0.50 }
 ])
 
-const accountCurrency = computed(() => accountSummary.value?.account?.currency ?? 'USDT')
 const selectedInstrument = computed(
   () =>
     instruments.value.find((instrument) => instrument.id === selectedInstrumentId.value) || null,
@@ -583,6 +550,34 @@ const submitWithdraw = async () => {
     loading.withdraw = false
   }
 }
+// Thêm biến cho giá trị USD tính toán và nhãn nút nhấn
+const usdEquivalent = computed(() => {
+  const price = orderForm.type === 'MARKET' ? (orderBook.value.asks[0]?.price || orderBook.value.bids[0]?.price || 0) : Number.parseFloat(orderForm.price || 0);
+  const qty = Number.parseFloat(orderForm.quantity || 0);
+  
+  if (price === 0 || isNaN(price) || isNaN(qty)) {
+    return 'USD 0.00';
+  }
+  
+  const total = price * qty;
+  return `USD ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+});
+
+const submitButtonLabel = computed(() => {
+  const side = orderForm.side;
+  const qty = Number.parseFloat(orderForm.quantity || 0).toFixed(2);
+  const symbol = selectedInstrument.value?.symbol || '';
+  const type = orderForm.type;
+  
+  let priceText;
+  if (type === 'MARKET') {
+    priceText = 'MKT';
+  } else {
+    priceText = orderForm.price ? `${orderForm.price} ${type.slice(0, 3)}` : 'Limit/Stop Price';
+  }
+  
+  return `${side} ${qty} ${symbol} @ ${priceText}`;
+});
 
 const placeOrder = async () => {
   if (!account.value?.id || !selectedInstrumentId.value) {
@@ -1316,3 +1311,9 @@ const initializeMenuInteractivity = () => {
   }
 }
 </style>
+
+
+
+
+
+

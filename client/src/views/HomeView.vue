@@ -28,12 +28,12 @@
       </nav>
     </aside>
     <div class="dashboard-main-wrapper">
-      <DashboardMain />
+      <Dashboard />
     </div>
   </div>
 </template>
 <script setup>
-import DashboardMain from '@/components/DashboardMain.vue'
+import Dashboard from '@/components/Dashboard.vue'
 </script>
 
 <style scoped>

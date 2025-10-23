@@ -13,6 +13,7 @@
       </thead>
       <tbody>
         <tr v-for="item in marketData" :key="item.symbol">
+          <td>Here</td>
           <td>{{ item.symbol }}</td>
           <td>{{ item.name }}</td>
           <td>{{ item.price }}</td>

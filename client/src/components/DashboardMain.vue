@@ -1,6 +1,5 @@
 <template>
   <main class="main-content">
-    <!-- Header -->
     <header class="header">
       <h1>Dashboard</h1>
       <div class="search-bar">
@@ -13,7 +12,6 @@
       </div>
     </header>
 
-    <!-- Alert Messages -->
     <div v-if="feedback.error || feedback.success" class="alert-container">
       <div
         :class="['alert', feedback.error ? 'alert-error' : 'alert-success']"
@@ -24,7 +22,6 @@
       </div>
     </div>
 
-    <!-- Market Insights Grid -->
     <section class="top-insights-grid">
       <div v-for="insight in marketInsights" :key="insight.symbol"
            :class="['insight-card', insight.changePercent >= 0 ? 'green-change' : 'red-change']"
@@ -38,120 +35,138 @@
       </div>
     </section>
 
-    <!-- Main Widgets Grid -->
-    <section class="widgets-grid">
-      <!-- Main Chart Widget -->
-      <div class="widget main-chart-widget">
-        <div class="tabs">
-          <span v-for="tab in chartTabs" :key="tab"
-                :class="['tab', { active: selectedChartTab === tab }]"
-                @click="selectChartTab(tab)">
-            {{ tab }}
+    <section class="widgets-grid-new">
+      <div class="widget candlestick-chart-widget">
+        <div class="widget-header">
+          <div class="tabs">
+            <span v-for="tab in candlestickChartTabs" :key="tab.symbol"
+                  :class="['tab', { active: selectedCandlestickChartTab === tab.symbol }]"
+                  @click="selectCandlestickChartTab(tab.symbol)">
+              {{ tab.symbol }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="chart-info-header" v-if="currentCandleInfo">
+          <span class="info-pair">{{ currentCandleInfo.symbol }} / U.S. Dollar</span>
+          <span class="info-time">1D</span>
+          <span class="info-label">O</span>
+          <span :class="['info-value', currentCandleInfo.change >= 0 ? 'green-text' : 'red-text']">
+            {{ formatNumber(currentCandleInfo.open, 2) }}
+          </span>
+          <span class="info-label">H</span>
+          <span :class="['info-value', currentCandleInfo.change >= 0 ? 'green-text' : 'red-text']">
+            {{ formatNumber(currentCandleInfo.high, 2) }}
+          </span>
+          <span class="info-label">L</span>
+          <span :class="['info-value', currentCandleInfo.change >= 0 ? 'green-text' : 'red-text']">
+            {{ formatNumber(currentCandleInfo.low, 2) }}
+          </span>
+          <span class="info-label">C</span>
+          <span :class="['info-value', currentCandleInfo.change >= 0 ? 'green-text' : 'red-text']">
+            {{ formatNumber(currentCandleInfo.close, 2) }}
+          </span>
+          <span :class="['info-value info-change', currentCandleInfo.changePercent >= 0 ? 'green-text' : 'red-text']">
+            {{ formatChangePercent(currentCandleInfo.changePercent) }}
+          </span>
+          <span class="info-label info-volume-label">Vol:</span>
+          <span :class="['info-value info-volume-value', currentCandleInfo.change >= 0 ? 'green-text' : 'red-text']">
+             {{ formatNumber(currentCandleInfo.volume, 2) }}
           </span>
         </div>
-        <div class="chart-area-container">
-          <canvas ref="mainChart" id="main-chart-canvas"></canvas>
+        <div class="chart-area-container-large">
+          <div ref="mainCandlestickChart" id="main-candlestick-chart-container"></div>
         </div>
         <div class="chart-footer">
           <p>Total trade</p><p>Total volume</p><p>Total value</p>
         </div>
       </div>
 
-      <!-- Account Summary Widget -->
-      <div class="widget account-summary-widget">
-        <div class="widget-header">
-          <h2>Account Summary</h2>
-          <span class="mdi mdi-information-outline"></span>
-        </div>
-
-        <div v-if="account" class="account-info">
-          <div class="account-name">{{ account.email }}</div>
-        </div>
-
-        <div v-if="accountSummary" class="account-balance">
-          <div class="balance-title">Available Balance</div>
-          <div class="balance-value">
-            {{ formatNumber(accountSummary.account.balance.available, 2) }} {{ accountCurrency }}
+      <div class="trading-summary-group">
+        
+        <div class="trading-card order-entry-card summary-card">
+          <div class="card-header">
+            <h3>Summary (Order Entry)</h3>
+            <div class="order-side-toggle">
+              <button :class="['side-btn', { active: orderForm.side === 'BUY' }]"
+                      @click="orderForm.side = 'BUY'">Buy</button>
+              <button :class="['side-btn', { active: orderForm.side === 'SELL' }]"
+                      @click="orderForm.side = 'SELL'">Sell</button>
+            </div>
           </div>
+
+          <form @submit.prevent="placeOrder" class="order-form">
+            <div class="form-group">
+              <label>Instrument</label>
+              <select v-model="selectedInstrumentId" class="form-select">
+                <option v-for="instrument in instruments" :key="instrument.id" :value="instrument.id">
+                  {{ instrument.symbol }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Order Type</label>
+              <select v-model="orderForm.type" class="form-select">
+                <option value="MARKET">Market</option>
+                <option value="LIMIT">Limit</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Quantity</label>
+                <input v-model="orderForm.quantity" type="number" step="0.0001" min="0" class="form-input">
+              </div>
+
+              <div class="form-group">
+                <label>Price</label>
+                <input v-model="orderForm.price" type="number" step="0.01" min="0"
+                       :disabled="orderForm.type === 'MARKET'" class="form-input">
+              </div>
+            </div>
+
+            <button type="submit"
+                    :class="['submit-btn', orderForm.side.toLowerCase()]"
+                    :disabled="loading.order">
+              <span v-if="loading.order" class="loading-spinner"></span>
+              {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
+            </button>
+          </form>
         </div>
 
-        <div v-if="accountSummary" class="key-metrics">
-          <div class="metric">
-            <p>Portfolio Value</p>
-            <p class="value">{{ formatNumber(accountSummary.totals.portfolioValue, 2) }} {{ accountCurrency }}</p>
+        <div class="widget account-summary-widget">
+          <div class="widget-header">
+            <h2>Account Summary</h2>
+            <span class="mdi mdi-information-outline"></span>
           </div>
-          <div class="metric">
-            <p>Equity</p>
-            <p class="value">{{ formatNumber(accountSummary.totals.equity, 2) }} {{ accountCurrency }}</p>
+
+          <div v-if="account" class="account-info">
+            <div class="account-name">{{ account.email }}</div>
+          </div>
+
+          <div v-if="accountSummary" class="account-balance">
+            <div class="balance-title">Available Balance</div>
+            <div class="balance-value">
+              {{ formatNumber(accountSummary.account.balance.available, 2) }} {{ accountCurrency }}
+            </div>
+          </div>
+
+          <div v-if="accountSummary" class="key-metrics">
+            <div class="metric">
+              <p>Portfolio Value</p>
+              <p class="value">{{ formatNumber(accountSummary.totals.portfolioValue, 2) }} {{ accountCurrency }}</p>
+            </div>
+            <div class="metric">
+              <p>Equity</p>
+              <p class="value">{{ formatNumber(accountSummary.totals.equity, 2) }} {{ accountCurrency }}</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Trading and Portfolio Section -->
     <section class="trading-section">
-      <!-- Order Entry Card -->
-      <div class="trading-card order-entry-card">
-        <div class="card-header">
-          <h3>Order Entry</h3>
-          <div class="order-side-toggle">
-            <button :class="['side-btn', { active: orderForm.side === 'BUY' }]"
-                    @click="orderForm.side = 'BUY'">Buy</button>
-            <button :class="['side-btn', { active: orderForm.side === 'SELL' }]"
-                    @click="orderForm.side = 'SELL'">Sell</button>
-          </div>
-        </div>
-
-        <form @submit.prevent="placeOrder" class="order-form">
-          <div class="form-group">
-            <label>Instrument</label>
-            <select v-model="selectedInstrumentId" class="form-select">
-              <option v-for="instrument in instruments" :key="instrument.id" :value="instrument.id">
-                {{ instrument.symbol }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Order Type</label>
-            <select v-model="orderForm.type" class="form-select">
-              <option value="MARKET">Market</option>
-              <option value="LIMIT">Limit</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Quantity</label>
-              <input v-model="orderForm.quantity" type="number" step="0.0001" min="0" class="form-input">
-            </div>
-
-            <div class="form-group">
-              <label>Price</label>
-              <input v-model="orderForm.price" type="number" step="0.01" min="0"
-                     :disabled="orderForm.type === 'MARKET'" class="form-input">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Time in Force</label>
-            <select v-model="orderForm.timeInForce" class="form-select">
-              <option value="GTC">GTC</option>
-              <option value="IOC">IOC</option>
-              <option value="FOK">FOK</option>
-            </select>
-          </div>
-
-          <button type="submit"
-                  :class="['submit-btn', orderForm.side.toLowerCase()]"
-                  :disabled="loading.order">
-            <span v-if="loading.order" class="loading-spinner"></span>
-            {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- Deposit/Withdraw Card -->
       <div class="trading-card balance-card">
         <div class="balance-actions">
           <div class="action-section">
@@ -183,11 +198,34 @@
           </div>
         </div>
       </div>
+      
+      <div class="data-card orders-card">
+        <h3>My Orders</h3>
+        <div class="orders-table">
+          <div class="table-header">
+            <span>Instrument</span>
+            <span>Side</span>
+            <span>Type</span>
+            <span>Price</span>
+            <span>Quantity</span>
+            <span>Filled</span>
+            <span>Status</span>
+          </div>
+          <div v-for="order in orders" :key="order.id" class="table-row">
+            <span>{{ order.instrument?.symbol }}</span>
+            <span :class="['side', order.side.code.toLowerCase()]">{{ order.side.code }}</span>
+            <span>{{ order.type.code }}</span>
+            <span>{{ order.price ? formatNumber(order.price, 2) : '-' }}</span>
+            <span>{{ formatNumber(order.quantity, 4) }}</span>
+            <span>{{ formatNumber(order.filledQuantity, 4) }}</span>
+            <span>{{ order.status.code }}</span>
+          </div>
+          <div v-if="!orders.length" class="empty-message">No orders yet</div>
+        </div>
+      </div>
     </section>
 
-    <!-- Order Book and Orders Section -->
-    <section class="data-section">
-      <!-- Order Book -->
+    <section class="data-section-bottom">
       <div class="data-card order-book-card">
         <h3>Order Book - {{ selectedInstrument?.symbol || 'Select Instrument' }}</h3>
 
@@ -224,35 +262,6 @@
         </div>
       </div>
 
-      <!-- Orders -->
-      <div class="data-card orders-card">
-        <h3>My Orders</h3>
-        <div class="orders-table">
-          <div class="table-header">
-            <span>Instrument</span>
-            <span>Side</span>
-            <span>Type</span>
-            <span>Price</span>
-            <span>Quantity</span>
-            <span>Filled</span>
-            <span>Status</span>
-          </div>
-          <div v-for="order in orders" :key="order.id" class="table-row">
-            <span>{{ order.instrument?.symbol }}</span>
-            <span :class="['side', order.side.code.toLowerCase()]">{{ order.side.code }}</span>
-            <span>{{ order.type.code }}</span>
-            <span>{{ order.price ? formatNumber(order.price, 2) : '-' }}</span>
-            <span>{{ formatNumber(order.quantity, 4) }}</span>
-            <span>{{ formatNumber(order.filledQuantity, 4) }}</span>
-            <span>{{ order.status.code }}</span>
-          </div>
-          <div v-if="!orders.length" class="empty-message">No orders yet</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Portfolio Section -->
-    <section class="portfolio-section">
       <div class="data-card portfolio-card">
         <h3>Portfolio</h3>
         <div class="portfolio-table">
@@ -274,37 +283,14 @@
         </div>
       </div>
     </section>
-
-    <!-- Recent Executions Section -->
-    <section class="portfolio-section">
-      <div class="data-card executions-card">
-        <h3>Recent Executions</h3>
-        <div class="portfolio-table">
-          <div class="table-header">
-            <span>Instrument</span>
-            <span>Side</span>
-            <span>Price</span>
-            <span>Quantity</span>
-            <span>Time</span>
-          </div>
-          <div v-for="execution in executions" :key="execution.id" class="table-row">
-            <span>{{ execution.instrument?.symbol }}</span>
-            <span :class="['side', execution.side.code.toLowerCase()]">{{ execution.side.code }}</span>
-            <span>{{ formatNumber(execution.price, 2) }}</span>
-            <span>{{ formatNumber(execution.quantity, 4) }}</span>
-            <span>{{ new Date(execution.timestamp).toLocaleString() }}</span>
-          </div>
-          <div v-if="!executions.length" class="empty-message">No recent executions</div>
-        </div>
-      </div>
-    </section>
   </main>
 </template>
+
 <script setup>
-import DashboardMain from '../components/DashboardMain.vue'
 import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
-import apiClient from '../utils/api'
-import { sessionState } from '../stores/session'
+import apiClient from '../utils/api' 
+import { sessionState } from '../stores/session' 
+import * as echarts from 'echarts' 
 
 const account = computed(() => sessionState.account)
 const accountSummary = ref(null)
@@ -314,7 +300,6 @@ const orderBook = ref({ bids: [], asks: [] })
 const orders = ref([])
 const depositAmount = ref('')
 const withdrawAmount = ref('')
-const executions = ref([])
 
 const orderForm = reactive({
   side: 'BUY',
@@ -325,31 +310,28 @@ const orderForm = reactive({
 })
 
 const feedback = reactive({ success: '', error: '' })
-const loading = reactive({ deposit: false, withdraw: false, order: false })
+const loading = reactive({ deposit: false, withdraw: false, order: false, chart: false }) 
 
-// New dashboard features
-const mainChart = ref(null)
-const selectedChartTab = ref('DSEX')
-const chartTabs = ['DSEX', 'DSES', 'DS30']
-let tradingChart = null
+const mainCandlestickChart = ref(null)
+let echartsInstance = null 
 
-// Market insights data
-const marketInsights = ref([
-  { symbol: 'GOLD', price: 2120.56, changePercent: -0.04 },
-  { symbol: 'DOW', price: 32053.74, changePercent: 0.45 },
-  { symbol: 'S&P500', price: 43003.06, changePercent: 0.47 },
-  { symbol: 'NASDAQ', price: 6355.46, changePercent: 0.64 },
-  { symbol: 'BTC', price: 28450.23, changePercent: 0.49 },
-  { symbol: 'ETH', price: 1850.74, changePercent: 0.50 }
-])
+// BIẾN QUAN TRỌNG: Biến lưu thông tin nến hiện tại (Đã được cập nhật real-time)
+const currentCandleInfo = ref(null)
+
+const selectedCandlestickChartTab = ref('BTC')
+const candlestickChartTabs = reactive([
+  // Cần thêm volume vào dữ liệu mock nếu muốn hiển thị Vol
+  { symbol: 'BTC', data: null }, 
+  { symbol: 'ETH', data: null }
+]) 
+
+const marketInsights = ref([]) 
 
 const accountCurrency = computed(() => accountSummary.value?.account?.currency ?? 'USDT')
 const selectedInstrument = computed(
   () =>
     instruments.value.find((instrument) => instrument.id === selectedInstrumentId.value) || null,
 )
-const orderButtonColor = computed(() => (orderForm.side === 'BUY' ? 'success' : 'error'))
-const orderButtonLabel = computed(() => (orderForm.side === 'BUY' ? 'Buy' : 'Sell'))
 
 const formatNumber = (value, fractionDigits = 2) => {
   const numeric = Number.parseFloat(value)
@@ -365,140 +347,335 @@ const formatChangePercent = (value) => {
   return `${sign}${value.toFixed(2)}%`
 }
 
-// Chart functionality
-const loadChart = async (indexName) => {
-  await nextTick()
+// Hàm chuyển đổi dữ liệu nến thô sang format hiển thị trên thanh info
+const convertCandleDataToInfo = (symbol, rawCandleData, rawVolumeData) => {
+    // Dữ liệu nến trong ECharts là [open, close, low, high]
+    const open = rawCandleData[0]
+    const close = rawCandleData[1]
+    const high = rawCandleData[3] 
+    const low = rawCandleData[2]
 
-  if (!mainChart.value) return
+    const change = close - open
+    const changePercent = (change / open) * 100
+    
+    // Lấy volume 
+    const volume = rawVolumeData ? rawVolumeData[1] : 1.364 * 1000 
 
-  // Destroy existing chart
-  if (tradingChart) {
-    tradingChart.destroy()
-  }
-
-  // Import Chart.js dynamically
-  const { Chart, registerables } = await import('chart.js')
-  Chart.register(...registerables)
-
-  let chartData, chartBarColor
-
-  if (indexName === 'DSEX') {
-    chartData = [6000, 6100, 6050, 6150, 6120, 6200, 6148]
-    chartBarColor = '#00b050'
-  } else if (indexName === 'DSES') {
-    chartData = [550, 580, 560, 590, 575, 610, 595]
-    chartBarColor = '#4a90e2'
-  } else {
-    chartData = [2100, 2150, 2080, 2200, 2180, 2250, 2210]
-    chartBarColor = '#ff9900'
-  }
-
-  const ctx = mainChart.value.getContext('2d')
-
-  tradingChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
-      datasets: [{
-        label: `${indexName} Price`,
-        data: chartData,
-        backgroundColor: chartBarColor,
-        borderRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { mode: 'index', intersect: false }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { color: '#FFFFFF' }
-        },
-        y: {
-          grid: { color: '#27293d' },
-          ticks: { color: '#FFFFFF' }
-        }
-      }
+    return {
+        symbol: symbol,
+        open: open,
+        high: high,
+        low: low,
+        close: close,
+        change: change, 
+        changePercent: changePercent,
+        volume: volume
     }
+}
+
+
+// =======================================================
+// ⭐ HÀM FETCH DỮ LIỆU BIỂU ĐỒ NẾN (MOCK) ⭐
+// =======================================================
+const fetchCandlestickData = (symbol) => {
+  const generateCandlestickData = (basePrice, numDays = 60) => {
+    const data = []
+    let currentPrice = basePrice
+    // Tính toán thời gian bắt đầu (60 ngày trước)
+    let currentTime = Date.now() - (numDays * 24 * 60 * 60 * 1000) 
+
+    for (let i = 0; i < numDays; i++) {
+      const time = Math.floor(currentTime / 1000)
+      const open = currentPrice
+      const high = open * (1 + (Math.random() * 0.03)) 
+      const low = open * (1 - (Math.random() * 0.03)) 
+      const close = low + (Math.random() * (high - low))
+      const volume = Math.random() * 100000 + 50000 
+
+      currentPrice = close + (Math.random() - 0.5) * basePrice * 0.02 
+
+      data.push({
+        time: time,
+        open: parseFloat(open.toFixed(2)),
+        high: parseFloat(high.toFixed(2)),
+        low: parseFloat(low.toFixed(2)),
+        close: parseFloat(close.toFixed(2)),
+        volume: parseFloat(volume.toFixed(2)) 
+      })
+      currentTime += (24 * 60 * 60 * 1000) 
+    }
+    return data
+  }
+  const basePrice = symbol === 'BTC' ? 40000 : 2500
+  return new Promise(resolve => {
+    setTimeout(() => { 
+      resolve(generateCandlestickData(basePrice))
+    }, 500)
   })
 }
 
-const selectChartTab = (tab) => {
-  selectedChartTab.value = tab
-  loadChart(tab)
-}
-
-const drawMiniChart = async (element, isPositive) => {
-  if (!element) return
-
-  const { Chart, registerables } = await import('chart.js')
-  Chart.register(...registerables)
-
-  let canvas = element.querySelector('canvas')
-
-  if (!canvas) {
-    canvas = document.createElement('canvas')
-    canvas.width = 100
-    canvas.height = 30
-    element.appendChild(canvas)
-  } else {
-    const existingChart = Chart.getChart(canvas)
-    if (existingChart) {
-      existingChart.destroy()
-    }
-  }
-
-  const data = Array.from({ length: 15 }, () => (Math.random() * 10) + 80)
-  const chartColor = isPositive ? '#00b050' : '#FF3B30'
-
-  new Chart(canvas.getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: Array(15).fill(''),
-      datasets: [{
-        data: data,
-        borderColor: chartColor,
-        borderWidth: 2,
-        tension: 0.6,
-        fill: false,
-        backgroundColor: 'transparent',
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      elements: { point: { radius: 0 } },
-      plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { x: { display: false }, y: { display: false } }
-    }
-  })
-}
-
+// =======================================================
+// ⭐ HÀM CẬP NHẬT DỮ LIỆU THỊ TRƯỜNG VÀ NẾN CUỐI CÙNG (REAL-TIME MOCK) ⭐
+// =======================================================
 const updateMarketData = () => {
-  marketInsights.value.forEach((insight, index) => {
-    const changePercent = (Math.random() - 0.5) * 1.5
-    const newPrice = insight.price * (1 + changePercent / 100)
+    // 1. Cập nhật Market Insight Cards (giữ nguyên)
+    marketInsights.value.forEach((insight, index) => {
+        if (insight.price && insight.symbol) {
+            const changePercent = (Math.random() - 0.5) * 1.5
+            const newPrice = insight.price * (1 + changePercent / 100)
 
-    marketInsights.value[index] = {
-      ...insight,
-      price: newPrice,
-      changePercent
-    }
-  })
-
-  // Update mini charts
-  nextTick(() => {
-    marketInsights.value.forEach((insight) => {
-      const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
-      if (element) {
-        drawMiniChart(element, insight.changePercent >= 0)
-      }
+            marketInsights.value[index] = {
+                ...insight,
+                price: newPrice,
+                changePercent
+            }
+        }
     })
-  })
+
+    // 2. BỔ SUNG: Cập nhật nến cuối cùng của Tab đang hiển thị
+    const currentSymbol = selectedCandlestickChartTab.value
+    let tab = candlestickChartTabs.find(t => t.symbol === currentSymbol)
+
+    if (tab && tab.data && tab.data.length > 0) {
+        let lastCandle = tab.data[tab.data.length - 1]
+
+        // Mô phỏng sự thay đổi nhỏ của giá (factor 0.001 = 0.1% thay đổi tối đa)
+        const priceChangeFactor = 1 + (Math.random() - 0.5) * 0.001 
+
+        const newClose = parseFloat((lastCandle.close * priceChangeFactor).toFixed(2))
+        const newOpen = lastCandle.open // Giữ Open không đổi trong suốt ngày
+        
+        // Cập nhật High và Low
+        const newHigh = Math.max(lastCandle.high, newClose, newOpen)
+        const newLow = Math.min(lastCandle.low, newClose, newOpen)
+        const newVolume = lastCandle.volume + Math.random() * 5000 // Tăng nhẹ Volume
+
+        // Cập nhật dữ liệu nến (Chỉ cập nhật nến cuối cùng trong tab.data)
+        tab.data[tab.data.length - 1] = {
+            ...lastCandle,
+            close: newClose,
+            high: parseFloat(newHigh.toFixed(2)),
+            low: parseFloat(newLow.toFixed(2)),
+            volume: parseFloat(newVolume.toFixed(2))
+        }
+        
+        // CẬP NHẬT currentCandleInfo VỚI DỮ LIỆU NẾN MỚI
+        const newCandleData = [newOpen, newClose, newLow, newHigh] 
+        const newVolumeData = [Date.now(), newVolume, newOpen > newClose ? 1 : -1]
+
+        currentCandleInfo.value = convertCandleDataToInfo(
+            currentSymbol, 
+            newCandleData, 
+            newVolumeData
+        )
+        
+        // CẬP NHẬT BIỂU ĐỒ ECHARTS VỚI DỮ LIỆU NẾN MỚI
+        if (echartsInstance) {
+            // Chuẩn bị dữ liệu mới cho ECharts
+            const updatedCandleData = tab.data.map(item => [
+                item.time * 1000, 
+                item.open, 
+                item.close, 
+                item.low, 
+                item.high
+            ]);
+
+            echartsInstance.setOption({
+                series: [
+                    { data: updatedCandleData }
+                    // Có thể cần thêm series volume nếu có
+                ]
+            });
+        }
+    }
+
+    // 3. Cập nhật Mini Charts (giữ nguyên)
+    nextTick(() => {
+        marketInsights.value.forEach((insight) => {
+            const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
+            if (element) {
+                drawMiniChart(element, insight.changePercent >= 0)
+            }
+        })
+    })
+}
+
+
+const loadEChart = async (symbol) => {
+  const container = mainCandlestickChart.value
+  if (!container) return
+
+  loading.chart = true 
+  
+  let tab = candlestickChartTabs.find(t => t.symbol === symbol)
+  
+  if (!tab.data) {
+    tab.data = await fetchCandlestickData(symbol) 
+  }
+  
+  const fetchedData = tab.data;
+
+  if (!fetchedData || fetchedData.length === 0) {
+    loading.chart = false
+    if (echartsInstance) echartsInstance.setOption({ series: [] });
+    return
+  }
+  
+  // CHUYỂN ĐỔI DỮ LIỆU SANG FORMAT ECHARTS
+  // THAY ĐỔI 1: Cấu trúc dữ liệu nến cho type: 'time' -> [Timestamp, Open, Close, Low, High]
+  const candlestickDataWithTime = fetchedData.map(item => [
+      item.time * 1000, 
+      item.open, 
+      item.close, 
+      item.low, 
+      item.high
+  ]); 
+  
+  // Volume Data: [Timestamp, Volume, colorTag]
+  const volumeData = fetchedData.map(item => [
+      item.time * 1000, 
+      item.volume, 
+      item.open > item.close ? 1 : -1
+  ]); 
+  
+  // Lấy dữ liệu OHLC thuần để tính min/max price
+  const ohlcData = fetchedData.map(item => [item.open, item.close, item.low, item.high]);
+
+  const allPrices = ohlcData.flatMap(d => d)
+  const minPrice = Math.min(...allPrices) * 0.99
+  const maxPrice = Math.max(...allPrices) * 1.01
+
+
+  if (!echartsInstance) {
+      echartsInstance = echarts.init(container) 
+  }
+  
+  // Cập nhật currentCandleInfo với nến cuối cùng (Lần đầu load)
+  const lastCandleIndex = fetchedData.length - 1;
+  if (fetchedData.length > 0) {
+      const lastCandle = fetchedData[lastCandleIndex];
+      // Dữ liệu nến trong convertCandleDataToInfo là [open, close, low, high]
+      const lastCandleDataForInfo = [lastCandle.open, lastCandle.close, lastCandle.low, lastCandle.high]; 
+      // Dữ liệu volume [time, volume, colorTag]
+      const lastVolumeData = volumeData[lastCandleIndex]; 
+      
+      currentCandleInfo.value = convertCandleDataToInfo(symbol, lastCandleDataForInfo, lastVolumeData);
+  } else {
+      currentCandleInfo.value = null;
+  }
+  
+  // THAY ĐỔI QUAN TRỌNG: Loại bỏ listeners 'mousemove' và 'mouseout'
+  echartsInstance.off('mousemove'); 
+  echartsInstance.off('mouseout'); 
+
+
+  // Cấu hình Options (Candlestick)
+  const option = {
+      backgroundColor: '#27293d',
+      tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross' },
+          textStyle: { color: '#f0f0f0' },
+          borderColor: '#3a3b50',
+          backgroundColor: 'rgba(39, 41, 61, 0.85)',
+          // Giữ lại tooltip để người dùng vẫn có thể xem chi tiết từng nến nếu cần
+          formatter: function (params) {
+              const data = params[0].data;
+              if (data.length !== 5) return ''; // Đã bao gồm timestamp nên là 5 phần tử
+              const timeStr = echarts.format.formatTime('yyyy-MM-dd', data[0]);
+              return [
+                  `**${symbol}**`,
+                  `Time: ${timeStr}`,
+                  `Open: ${data[1].toFixed(2)}`,
+                  `Close: ${data[2].toFixed(2)}`,
+                  `Low: ${data[3].toFixed(2)}`,
+                  `High: ${data[4].toFixed(2)}`
+              ].join('<br>');
+          }
+      },
+      grid: {
+          left: '5%',
+          right: '5%',
+          bottom: '10%',
+          top: '15%', 
+          containLabel: true
+      },
+      // THAY ĐỔI 2: Đổi trục X sang type 'time'
+      xAxis: {
+          type: 'time', 
+          // Bỏ data: ECharts sẽ tự lấy từ series
+          axisLine: { lineStyle: { color: '#3a3b50' } },
+          axisLabel: {
+            // ⭐ Đảm bảo màu chữ là trắng sáng
+            color: 'white', 
+            padding: [0, 8, 0, 8],
+            fformatter: function (value) {
+                const date = new Date(value);
+                const day = date.getDate();
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = monthNames[date.getMonth()];
+                
+                if (day === 1 || day === 15) {
+                    return `${month} ${day}`;
+                } else {
+                    return day; 
+                }
+            }
+          },
+          boundaryGap: false, 
+          splitLine: { show: false }
+      },
+      yAxis: {
+          scale: true,
+          axisLine: { lineStyle: { color: '#3a3b50' } },
+          axisLabel: { color: 'white' },
+          splitLine: { lineStyle: { color: '#3a3b50' } },
+          min: minPrice.toFixed(2),
+          max: maxPrice.toFixed(2)
+      },
+      series: [
+          {
+              name: symbol,
+              type: 'candlestick',
+              // THAY ĐỔI 3: Dùng dữ liệu nến đã có timestamp
+              data: candlestickDataWithTime, 
+              itemStyle: {
+                  color: '#00b050', 
+                  color0: '#e53935', 
+                  borderColor: '#00b050',
+                  borderColor0: '#e53935'
+              },
+              emphasis: {
+                itemStyle: {
+                    borderWidth: 1
+                }
+              }
+          },
+      ]
+  }
+
+  echartsInstance.setOption(option, true)
+  
+  if (!container.__resizeObserver) {
+      container.__resizeObserver = new ResizeObserver(() => {
+          echartsInstance.resize()
+      });
+      container.__resizeObserver.observe(container);
+  }
+  
+  loading.chart = false 
+}
+
+const selectCandlestickChartTab = (symbol) => {
+  if (selectedCandlestickChartTab.value === symbol) return
+  selectedCandlestickChartTab.value = symbol
+  loadEChart(symbol) 
+}
+
+const drawMiniChart = (element, isPositive) => {
+  if (!element) return
+  element.style.backgroundColor = 'transparent'
+  element.innerHTML = `<div style="height: 100%; width: 100%; border-bottom: 2px solid ${isPositive ? '#00b050' : '#e53935'};"></div>`
 }
 
 const setSuccess = (message) => {
@@ -522,7 +699,6 @@ const resetDashboardState = () => {
   depositAmount.value = ''
   withdrawAmount.value = ''
   orderBook.value = { bids: [], asks: [] }
-  executions.value = []
   feedback.success = ''
   feedback.error = ''
   resetOrderForm()
@@ -530,11 +706,17 @@ const resetDashboardState = () => {
 
 const fetchInstruments = async () => {
   try {
-    const { data } = await apiClient.get('/api/instruments')
+    const { data } = await apiClient.get('/api/instruments') 
     instruments.value = data
     if (!selectedInstrumentId.value && data.length) {
       selectedInstrumentId.value = data[0].id
     }
+    
+    marketInsights.value = data.slice(0, 2).map(i => ({ 
+      symbol: i.symbol, 
+      price: Math.random() * 1000 + 10000, 
+      changePercent: (Math.random() - 0.5) * 1.5 
+    }))
   } catch (error) {
     setError(error.response?.data?.error || 'Unable to load instruments')
   }
@@ -567,16 +749,6 @@ const fetchOrderBook = async () => {
     orderBook.value = data
   } catch (error) {
     setError(error.response?.data?.error || 'Unable to load order book')
-  }
-}
-
-const fetchExecutions = async () => {
-  if (!account.value?.id) return
-  try {
-    const { data } = await apiClient.get(`/api/executions/account/${account.value.id}`)
-    executions.value = data
-  } catch (err) {
-    console.error('Failed to load executions', err)
   }
 }
 
@@ -652,7 +824,7 @@ const placeOrder = async () => {
     await apiClient.post('/api/orders', payload)
     setSuccess('Order submitted')
     resetOrderForm()
-    await Promise.all([fetchAccountSummary(), fetchOrders(), fetchOrderBook(), fetchExecutions()])
+    await Promise.all([fetchAccountSummary(), fetchOrders(), fetchOrderBook()])
   } catch (error) {
     setError(error.response?.data?.error || 'Order placement failed')
   } finally {
@@ -660,11 +832,16 @@ const placeOrder = async () => {
   }
 }
 
+
+// -------------------------------------------------------------------
+// LIFECYCLE VÀ WATCHERS
+// -------------------------------------------------------------------
+
 watch(
   () => account.value?.id,
   async (accountId) => {
     if (accountId) {
-      await Promise.all([fetchAccountSummary(), fetchOrders(), fetchExecutions()])
+      await Promise.all([fetchAccountSummary(), fetchOrders()])
     } else {
       resetDashboardState()
     }
@@ -686,21 +863,13 @@ onMounted(async () => {
     await fetchOrderBook()
   }
 
-  // Initialize dashboard features
   await nextTick()
-  await loadChart(selectedChartTab.value)
+  await loadEChart(selectedCandlestickChartTab.value) 
   updateMarketData()
 
-  // Update market data periodically
-  setInterval(updateMarketData, 5000)
+  // THAY ĐỔI ĐÃ ÁP DỤNG: Cập nhật dữ liệu thị trường (top insight cards và nến cuối cùng) mỗi 1 giây
+  setInterval(updateMarketData, 1000) 
 
-  // Also refresh executions periodically
-  setInterval(() => {
-    fetchExecutions()
-    fetchOrders()
-  }, 3000)
-
-  // Initialize menu interactivity
   initializeMenuInteractivity()
 })
 
@@ -717,9 +886,10 @@ const initializeMenuInteractivity = () => {
   })
 }
 </script>
-<style scoped>
+
+<style >
 /* Import Font Awesome */
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
+@import url('https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css');
 
 /* CSS Variables */
 :root {
@@ -802,7 +972,7 @@ const initializeMenuInteractivity = () => {
   border: #a0a0b0 1px solid;
 }
 
-.search-bar i {
+.search-bar .mdi {
   color: var(--text-color-faded);
 }
 
@@ -812,7 +982,7 @@ const initializeMenuInteractivity = () => {
   margin-left: 20px;
 }
 
-.user-actions i {
+.user-actions .mdi {
   font-size: 20px;
   margin-left: 15px;
   cursor: pointer;
@@ -827,8 +997,6 @@ const initializeMenuInteractivity = () => {
 }
 
 .user-avatar:hover {
-  /* box-shadow: 0 0 0 4px white;
-  border-radius: 50%; */
   cursor: pointer;
 }
 
@@ -866,7 +1034,8 @@ const initializeMenuInteractivity = () => {
 /* Market Insights Grid */
 .top-insights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  /* Chỉnh lại để fit cho 2 item */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -877,6 +1046,7 @@ const initializeMenuInteractivity = () => {
   border-radius: 12px;
   position: relative;
   transition: all 0.3s ease;
+  overflow: hidden; /* Cần thiết cho mini-chart */
 }
 
 .insight-card:hover {
@@ -920,15 +1090,16 @@ const initializeMenuInteractivity = () => {
   color: var(--red-color);
 }
 
+/* Mini Chart */
 .mini-chart {
   height: 30px;
   width: 100%;
 }
 
-/* Widgets Grid */
-.widgets-grid {
+/* Main Widgets Grid MỚI */
+.widgets-grid-new {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 2.5fr 1fr; 
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -937,13 +1108,16 @@ const initializeMenuInteractivity = () => {
   background-color: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
+  /* Đã THÊM: Dùng để định vị tuyệt đối các phần tử con */
+  position: relative; 
 }
 
 .widget-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  /* Điều chỉnh margin-bottom để thanh info header nằm gần chart hơn */
+  margin-bottom: 10px; 
 }
 
 .widget-header h2 {
@@ -951,14 +1125,20 @@ const initializeMenuInteractivity = () => {
   font-weight: 500;
 }
 
-/* Chart Widget */
-.main-chart-widget .tabs {
+/* Chart Widget - MỚI */
+.candlestick-chart-widget .widget-header {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
-.tab {
+.candlestick-chart-widget .tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.candlestick-chart-widget .tab {
   padding: 8px 16px;
   background-color: var(--dark-bg);
   border-radius: 6px;
@@ -966,14 +1146,76 @@ const initializeMenuInteractivity = () => {
   transition: all 0.3s ease;
 }
 
-.tab.active {
+.candlestick-chart-widget .tab.active {
   background-color: var(--accent-color);
   color: white;
 }
 
-.chart-area-container {
-  height: 300px;
+/* BỔ SUNG: Thanh thông tin giá chi tiết - Đã điều chỉnh để hiển thị bên trong khung chart */
+.chart-info-header {
+    /* THAY ĐỔI QUAN TRỌNG */
+    position: absolute; 
+    top: 85px; /* Điều chỉnh vị trí dưới Tabs (khoảng 20px padding + 45px tabs/header) */
+    left: 20px;
+    z-index: 10; /* Đảm bảo nó nằm trên biểu đồ */
+    
+    background-color: rgba(39, 41, 61, 0.85); /* Thêm độ trong suốt */
+    padding: 8px 15px; /* Giảm padding cho gọn */
+    margin: 0; /* Bỏ margin âm cũ */
+    
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* GIẢM gap để Label và Value dính vào nhau */
+    /* THAY ĐỔI: Tăng font-size cơ bản */
+    font-size: 16px; 
+    flex-wrap: wrap; 
+}
+
+.chart-info-header .info-pair {
+    font-weight: bold;
+    color: var(--text-color-light);
+    /* THAY ĐỔI: Tăng kích thước cặp giao dịch */
+    font-size: 18px; 
+}
+
+.chart-info-header .info-time {
+    color: var(--text-color-faded);
+}
+
+/* THAY ĐỔI TẠI ĐÂY: Nhãn (Label) luôn là màu trắng/light */
+.chart-info-header .info-label {
+    color: var(--text-color-light) !important; /* Đảm bảo nhãn luôn là màu light */
+    font-weight: 500;
+}
+
+/* Điều chỉnh lại spacing cho volume label */
+.chart-info-header .info-volume-label {
+    margin-left: 10px; 
+}
+
+
+/* BỔ SUNG: Định nghĩa màu cho VALUE (Giá trị số) bên trong info-ohlc */
+.chart-info-header .info-value.green-text {
+    color: var(--green-color) !important;
+}
+
+.chart-info-header .info-value.red-text {
+    color: var(--red-color) !important;
+}
+
+
+.chart-area-container-large {
+  /* GIỮ NGUYÊN: Tăng chiều cao để có thêm không gian cho biểu đồ và info header */
+  height: 480px; 
+  width: 100%;
   margin-bottom: 15px;
+}
+
+/* Đảm bảo Lightweight Chart container lấp đầy chart-area-container-large */
+#main-candlestick-chart-container {
+    width: 100%;
+    height: 100%;
 }
 
 .chart-footer {
@@ -983,7 +1225,33 @@ const initializeMenuInteractivity = () => {
   font-size: 12px;
 }
 
-/* Account Summary Widget */
+/* Trading Summary Group MỚI */
+.trading-summary-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Order Entry/Summary Card */
+.trading-card {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.summary-card {
+  /* Cho Order Entry card chiếm phần trên của cột phải */
+  flex-grow: 1; 
+}
+
+/* Account Summary Widget (Phần còn lại) */
+.account-summary-widget {
+  /* Cho Account Summary card chiếm phần dưới của cột phải */
+  flex-grow: 1; 
+}
+
+
+/* Account Summary Widget Styles (giữ nguyên) */
 .account-info {
   margin-bottom: 15px;
 }
@@ -1031,20 +1299,23 @@ const initializeMenuInteractivity = () => {
   color: var(--text-color-light);
 }
 
-/* Trading Section */
+/* Trading Section (Deposit/Withdraw and Orders) - Đã thay đổi layout */
 .trading-section {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr; /* Chia 2 cột cho Deposit/Withdraw và Orders */
   gap: 20px;
   margin-bottom: 30px;
 }
 
-.trading-card {
-  background-color: var(--card-bg);
-  border-radius: 12px;
-  padding: 20px;
+/* Data Section Bottom (Order Book and Portfolio) - Đã thay đổi layout */
+.data-section-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Chia 2 cột cho Order Book và Portfolio */
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
+/* Order Entry Card Header (giữ nguyên) */
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -1081,7 +1352,7 @@ const initializeMenuInteractivity = () => {
   background-color: var(--red-color);
 }
 
-/* Form Styles */
+/* Form Styles (giữ nguyên) */
 .order-form {
   display: flex;
   flex-direction: column;
@@ -1157,7 +1428,11 @@ const initializeMenuInteractivity = () => {
   cursor: not-allowed;
 }
 
-/* Balance Actions */
+/* Balance Actions (giữ nguyên) */
+.balance-card {
+  /* Đã chuyển sang trading-section */
+}
+
 .balance-actions {
   display: flex;
   flex-direction: column;
@@ -1189,7 +1464,7 @@ const initializeMenuInteractivity = () => {
 }
 
 .deposit-btn {
-  background-color: var (--green-color);
+  background-color: var(--green-color);
   color: white;
 }
 
@@ -1207,18 +1482,7 @@ const initializeMenuInteractivity = () => {
   cursor: not-allowed;
 }
 
-/* Data Section */
-.data-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.portfolio-section {
-  margin-bottom: 30px;
-}
-
+/* Data/Orders/Portfolio Styles (giữ nguyên) */
 .data-card {
   background-color: var(--card-bg);
   border-radius: 12px;
@@ -1231,7 +1495,7 @@ const initializeMenuInteractivity = () => {
   margin-bottom: 20px;
 }
 
-/* Order Book */
+/* Order Book (giữ nguyên) */
 .order-book {
   display: flex;
   flex-direction: column;
@@ -1287,6 +1551,7 @@ const initializeMenuInteractivity = () => {
   grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 }
 
+/* Màu sắc cho Order Book Price (giữ nguyên) */
 .ask-row .price {
   color: var(--red-color);
 }
@@ -1295,8 +1560,17 @@ const initializeMenuInteractivity = () => {
   color: var(--green-color);
 }
 
+/* BỔ SUNG: Định nghĩa màu cho text - Đảm bảo độ ưu tiên */
+.green-text {
+  color: var(--green-color) !important;
+}
+
+.red-text { 
+  color: var(--red-color) !important;
+}
+
 .side.buy {
-  color: var (--green-color);
+  color: var(--green-color);
 }
 
 .side.sell {
@@ -1310,7 +1584,7 @@ const initializeMenuInteractivity = () => {
   font-style: italic;
 }
 
-/* Loading Spinner */
+/* Loading Spinner (giữ nguyên) */
 .loading-spinner {
   width: 16px;
   height: 16px;
@@ -1325,17 +1599,17 @@ const initializeMenuInteractivity = () => {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive Design */
+/* Responsive Design (giữ nguyên) */
 @media (max-width: 1200px) {
-  .widgets-grid {
-    grid-template-columns: 1fr;
+  .widgets-grid-new {
+    grid-template-columns: 1fr; /* Stack cột trái (Chart) và cột phải (Summary/Order) */
   }
 
   .trading-section {
     grid-template-columns: 1fr;
   }
 
-  .data-section {
+  .data-section-bottom {
     grid-template-columns: 1fr;
   }
 }
@@ -1348,7 +1622,7 @@ const initializeMenuInteractivity = () => {
   .sidebar {
     display: none;
   }
-
+s
   .top-insights-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
@@ -1358,4 +1632,3 @@ const initializeMenuInteractivity = () => {
   }
 }
 </style>
-```

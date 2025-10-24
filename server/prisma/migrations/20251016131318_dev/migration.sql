@@ -1,174 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the `ACCOUNT` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ACCOUNT_BALANCES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ACTION_TYPES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ACTOR_TYPES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ASSET_CLASSES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `AUDIT_LOG` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `CURRENCIES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `EXECUTIONS` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `INSTRUMENTS` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `LEDGER_ENTRIES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `LEDGER_ENTRY_TYPES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `MARKET_QUOTES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `OBJECT_TYPES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ORDERS` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ORDER_SIDES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ORDER_STATUSES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ORDER_TYPES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `POSITIONS` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `TIME_IN_FORCE_TYPES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `TRANSACTIONS` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `TRANSACTION_STATUSES` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `TRANSACTION_TYPES` table. If the table is not empty, all the data it contains will be lost.
-
-*/
--- DropForeignKey
-ALTER TABLE `ACCOUNT` DROP FOREIGN KEY `ACCOUNT_currency_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ACCOUNT_BALANCES` DROP FOREIGN KEY `ACCOUNT_BALANCES_account_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ACCOUNT_BALANCES` DROP FOREIGN KEY `ACCOUNT_BALANCES_currency_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `AUDIT_LOG` DROP FOREIGN KEY `AUDIT_LOG_action_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `AUDIT_LOG` DROP FOREIGN KEY `AUDIT_LOG_actor_type_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `AUDIT_LOG` DROP FOREIGN KEY `AUDIT_LOG_object_type_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `EXECUTIONS` DROP FOREIGN KEY `EXECUTIONS_instrument_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `EXECUTIONS` DROP FOREIGN KEY `EXECUTIONS_order_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `INSTRUMENTS` DROP FOREIGN KEY `INSTRUMENTS_asset_class_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `INSTRUMENTS` DROP FOREIGN KEY `INSTRUMENTS_currency_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `LEDGER_ENTRIES` DROP FOREIGN KEY `LEDGER_ENTRIES_account_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `LEDGER_ENTRIES` DROP FOREIGN KEY `LEDGER_ENTRIES_currency_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `LEDGER_ENTRIES` DROP FOREIGN KEY `LEDGER_ENTRIES_entry_type_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `MARKET_QUOTES` DROP FOREIGN KEY `MARKET_QUOTES_instrument_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ORDERS` DROP FOREIGN KEY `ORDERS_account_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ORDERS` DROP FOREIGN KEY `ORDERS_instrument_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ORDERS` DROP FOREIGN KEY `ORDERS_side_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ORDERS` DROP FOREIGN KEY `ORDERS_status_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ORDERS` DROP FOREIGN KEY `ORDERS_time_in_force_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `ORDERS` DROP FOREIGN KEY `ORDERS_type_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `POSITIONS` DROP FOREIGN KEY `POSITIONS_account_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `POSITIONS` DROP FOREIGN KEY `POSITIONS_instrument_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `TRANSACTIONS` DROP FOREIGN KEY `TRANSACTIONS_account_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `TRANSACTIONS` DROP FOREIGN KEY `TRANSACTIONS_currency_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `TRANSACTIONS` DROP FOREIGN KEY `TRANSACTIONS_status_id_fkey`;
-
--- DropForeignKey
-ALTER TABLE `TRANSACTIONS` DROP FOREIGN KEY `TRANSACTIONS_tx_type_id_fkey`;
-
--- DropTable
-DROP TABLE `ACCOUNT`;
-
--- DropTable
-DROP TABLE `ACCOUNT_BALANCES`;
-
--- DropTable
-DROP TABLE `ACTION_TYPES`;
-
--- DropTable
-DROP TABLE `ACTOR_TYPES`;
-
--- DropTable
-DROP TABLE `ASSET_CLASSES`;
-
--- DropTable
-DROP TABLE `AUDIT_LOG`;
-
--- DropTable
-DROP TABLE `CURRENCIES`;
-
--- DropTable
-DROP TABLE `EXECUTIONS`;
-
--- DropTable
-DROP TABLE `INSTRUMENTS`;
-
--- DropTable
-DROP TABLE `LEDGER_ENTRIES`;
-
--- DropTable
-DROP TABLE `LEDGER_ENTRY_TYPES`;
-
--- DropTable
-DROP TABLE `MARKET_QUOTES`;
-
--- DropTable
-DROP TABLE `OBJECT_TYPES`;
-
--- DropTable
-DROP TABLE `ORDERS`;
-
--- DropTable
-DROP TABLE `ORDER_SIDES`;
-
--- DropTable
-DROP TABLE `ORDER_STATUSES`;
-
--- DropTable
-DROP TABLE `ORDER_TYPES`;
-
--- DropTable
-DROP TABLE `POSITIONS`;
-
--- DropTable
-DROP TABLE `TIME_IN_FORCE_TYPES`;
-
--- DropTable
-DROP TABLE `TRANSACTIONS`;
-
--- DropTable
-DROP TABLE `TRANSACTION_STATUSES`;
-
--- DropTable
-DROP TABLE `TRANSACTION_TYPES`;
-
 -- CreateTable
 CREATE TABLE `currencies` (
     `id` VARCHAR(191) NOT NULL,
@@ -250,7 +79,7 @@ CREATE TABLE `accounts` (
     `id` VARCHAR(191) NOT NULL,
     `email` VARCHAR(191) NOT NULL,
     `password` VARCHAR(191) NOT NULL,
-    `currency_id` VARCHAR(191) NOT NULL,
+    `base_currency_id` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `accounts_email_key`(`email`),
@@ -342,13 +171,16 @@ CREATE TABLE `ledger_entries` (
 
 -- CreateTable
 CREATE TABLE `account_balances` (
-    `account_id` VARCHAR(191) NOT NULL,
+    `id` VARCHAR(191) NOT NULL,
+    `accountId` VARCHAR(191) NOT NULL,
+    `currencyId` VARCHAR(191) NOT NULL,
     `available` DECIMAL(18, 8) NOT NULL,
     `reserved` DECIMAL(18, 8) NOT NULL,
     `total` DECIMAL(18, 8) NOT NULL,
-    `updated_at` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL,
 
-    PRIMARY KEY (`account_id`)
+    UNIQUE INDEX `account_balances_accountId_currencyId_key`(`accountId`, `currencyId`),
+    PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -453,7 +285,7 @@ ALTER TABLE `instruments` ADD CONSTRAINT `instruments_asset_class_id_fkey` FOREI
 ALTER TABLE `instruments` ADD CONSTRAINT `instruments_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `accounts` ADD CONSTRAINT `accounts_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `accounts` ADD CONSTRAINT `accounts_base_currency_id_fkey` FOREIGN KEY (`base_currency_id`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `sessions` ADD CONSTRAINT `sessions_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -492,7 +324,10 @@ ALTER TABLE `ledger_entries` ADD CONSTRAINT `ledger_entries_account_id_fkey` FOR
 ALTER TABLE `ledger_entries` ADD CONSTRAINT `ledger_entries_entry_type_id_fkey` FOREIGN KEY (`entry_type_id`) REFERENCES `ledger_entry_types`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `account_balances` ADD CONSTRAINT `account_balances_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `account_balances` ADD CONSTRAINT `account_balances_accountId_fkey` FOREIGN KEY (`accountId`) REFERENCES `accounts`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `account_balances` ADD CONSTRAINT `account_balances_currencyId_fkey` FOREIGN KEY (`currencyId`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `market_quotes` ADD CONSTRAINT `market_quotes_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `instruments`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

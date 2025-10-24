@@ -8,12 +8,13 @@ generator client {
 }
 
 model Currency {
-  id          String        @id @default(uuid())
-  code        String        @unique
-  name        String
-  symbol      String
-  accounts    Account[]
-  instruments Instrument[]
+  id           String           @id @default(uuid())
+  code         String           @unique
+  name         String
+  symbol       String
+  // accounts     AccountBalance[] // removed
+  baseAccounts Account[]        @relation("AccountBaseCurrency")
+  instruments  Instrument[]
 
   @@map("currencies")
 }
@@ -33,8 +34,8 @@ model Instrument {
   name         String
   assetClassId String        @map("asset_class_id")
   assetClass   AssetClass    @relation(fields: [assetClassId], references: [id])
-  lotSize      Decimal       @db.Decimal(18, 8) @map("lot_size")
-  tickSize     Decimal       @db.Decimal(18, 8) @map("tick_size")
+  lotSize      Decimal       @map("lot_size") @db.Decimal(18, 8)
+  tickSize     Decimal       @map("tick_size") @db.Decimal(18, 8)
   currencyId   String        @map("currency_id")
   currency     Currency      @relation(fields: [currencyId], references: [id])
   createdAt    DateTime      @default(now()) @map("created_at")
@@ -46,8 +47,8 @@ model Instrument {
 }
 
 model OrderSide {
-  id          Int      @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String   @unique
+  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
+  code        String  @unique
   description String?
   orders      Order[]
 
@@ -55,8 +56,8 @@ model OrderSide {
 }
 
 model OrderStatus {
-  id          Int      @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String   @unique
+  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
+  code        String  @unique
   description String?
   orders      Order[]
 
@@ -64,8 +65,8 @@ model OrderStatus {
 }
 
 model OrderType {
-  id          Int      @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String   @unique
+  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
+  code        String  @unique
   description String?
   orders      Order[]
 
@@ -73,8 +74,8 @@ model OrderType {
 }
 
 model TimeInForceType {
-  id          Int      @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String   @unique
+  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
+  code        String  @unique
   description String?
   orders      Order[]
 
@@ -82,18 +83,18 @@ model TimeInForceType {
 }
 
 model Account {
-  id            String           @id @default(uuid())
-  email         String           @unique
-  password      String
-  currencyId    String           @map("currency_id")
-  currency      Currency         @relation(fields: [currencyId], references: [id])
-  createdAt     DateTime         @default(now()) @map("created_at")
-  orders        Order[]
-  positions     Position[]
-  ledgerEntries LedgerEntry[]
-  transactions  Transaction[]
-  balance       AccountBalance?
-  sessions      Session[]
+  id             String           @id @default(uuid())
+  email          String           @unique
+  password       String
+  baseCurrencyId String           @map("base_currency_id")
+  baseCurrency   Currency         @relation("AccountBaseCurrency", fields: [baseCurrencyId], references: [id])
+  createdAt      DateTime         @default(now()) @map("created_at")
+  orders         Order[]
+  positions      Position[]
+  ledgerEntries  LedgerEntry[]
+  transactions   Transaction[]
+  // balances       AccountBalance[] // removed
+  sessions       Session[]
 
   @@map("accounts")
 }
@@ -111,26 +112,26 @@ model Session {
 }
 
 model Order {
-  id                String        @id @default(uuid())
-  accountId         String        @map("account_id")
-  account           Account       @relation(fields: [accountId], references: [id])
-  instrumentId      String        @map("instrument_id")
-  instrument        Instrument    @relation(fields: [instrumentId], references: [id])
-  sideId            Int           @map("side_id") @db.SmallInt
-  side              OrderSide     @relation(fields: [sideId], references: [id])
-  typeId            Int           @map("type_id") @db.SmallInt
-  type              OrderType     @relation(fields: [typeId], references: [id])
-  statusId          Int           @map("status_id") @db.SmallInt
-  status            OrderStatus   @relation(fields: [statusId], references: [id])
-  timeInForceId     Int?          @map("time_in_force_id") @db.SmallInt
-  timeInForce       TimeInForceType? @relation(fields: [timeInForceId], references: [id])
-  clientOrderId     String?       @unique @map("client_order_id")
-  price             Decimal?      @db.Decimal(18, 8)
-  quantity          Decimal       @db.Decimal(18, 8)
-  filledQuantity    Decimal       @default(0) @db.Decimal(18, 8) @map("filled_quantity")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  executions        Execution[]
+  id             String           @id @default(uuid())
+  accountId      String           @map("account_id")
+  account        Account          @relation(fields: [accountId], references: [id])
+  instrumentId   String           @map("instrument_id")
+  instrument     Instrument       @relation(fields: [instrumentId], references: [id])
+  sideId         Int              @map("side_id") @db.SmallInt
+  side           OrderSide        @relation(fields: [sideId], references: [id])
+  typeId         Int              @map("type_id") @db.SmallInt
+  type           OrderType        @relation(fields: [typeId], references: [id])
+  statusId       Int              @map("status_id") @db.SmallInt
+  status         OrderStatus      @relation(fields: [statusId], references: [id])
+  timeInForceId  Int?             @map("time_in_force_id") @db.SmallInt
+  timeInForce    TimeInForceType? @relation(fields: [timeInForceId], references: [id])
+  clientOrderId  String?          @unique @map("client_order_id")
+  price          Decimal?         @db.Decimal(18, 8)
+  quantity       Decimal          @db.Decimal(18, 8)
+  filledQuantity Decimal          @default(0) @map("filled_quantity") @db.Decimal(18, 8)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  executions     Execution[]
 
   @@map("orders")
 }
@@ -155,7 +156,7 @@ model Position {
   instrumentId String     @map("instrument_id")
   instrument   Instrument @relation(fields: [instrumentId], references: [id])
   quantity     Decimal    @db.Decimal(18, 8)
-  averagePrice Decimal    @db.Decimal(18, 8) @map("average_price")
+  averagePrice Decimal    @map("average_price") @db.Decimal(18, 8)
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   @@unique([accountId, instrumentId], map: "positions_account_instrument_unique")
@@ -173,37 +174,26 @@ model LedgerEntryType {
 }
 
 model LedgerEntry {
-  id            String          @id @default(uuid())
-  accountId     String          @map("account_id")
-  account       Account         @relation(fields: [accountId], references: [id])
-  entryTypeId   Int             @map("entry_type_id") @db.SmallInt
-  entryType     LedgerEntryType @relation(fields: [entryTypeId], references: [id])
-  amount        Decimal         @db.Decimal(18, 8)
-  referenceId   String?         @map("reference_id")
-  referenceTable String?        @map("reference_table")
-  createdAt     DateTime        @default(now()) @map("created_at")
+  id             String          @id @default(uuid())
+  accountId      String          @map("account_id")
+  account        Account         @relation(fields: [accountId], references: [id])
+  entryTypeId    Int             @map("entry_type_id") @db.SmallInt
+  entryType      LedgerEntryType @relation(fields: [entryTypeId], references: [id])
+  amount         Decimal         @db.Decimal(18, 8)
+  referenceId    String?         @map("reference_id")
+  referenceTable String?         @map("reference_table")
+  createdAt      DateTime        @default(now()) @map("created_at")
 
   @@map("ledger_entries")
-}
-
-model AccountBalance {
-  accountId String  @id @map("account_id")
-  account   Account @relation(fields: [accountId], references: [id])
-  available Decimal @db.Decimal(18, 8)
-  reserved  Decimal @db.Decimal(18, 8)
-  total     Decimal @db.Decimal(18, 8)
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("account_balances")
 }
 
 model MarketQuote {
   id           BigInt     @id @default(autoincrement())
   instrumentId String     @map("instrument_id")
   instrument   Instrument @relation(fields: [instrumentId], references: [id])
-  bidPrice     Decimal?   @db.Decimal(18, 8) @map("bid_price")
-  askPrice     Decimal?   @db.Decimal(18, 8) @map("ask_price")
-  lastPrice    Decimal?   @db.Decimal(18, 8) @map("last_price")
+  bidPrice     Decimal?   @map("bid_price") @db.Decimal(18, 8)
+  askPrice     Decimal?   @map("ask_price") @db.Decimal(18, 8)
+  lastPrice    Decimal?   @map("last_price") @db.Decimal(18, 8)
   volume       Decimal?   @db.Decimal(18, 8)
   timestamp    DateTime   @map("ts")
 
@@ -212,8 +202,8 @@ model MarketQuote {
 }
 
 model TransactionType {
-  id           Int            @id @default(autoincrement()) @db.SmallInt
-  code         String         @unique
+  id           Int           @id @default(autoincrement()) @db.SmallInt
+  code         String        @unique
   description  String?
   category     String?
   transactions Transaction[]
@@ -222,8 +212,8 @@ model TransactionType {
 }
 
 model TransactionStatus {
-  id           Int            @id @default(autoincrement()) @db.SmallInt
-  code         String         @unique
+  id           Int           @id @default(autoincrement()) @db.SmallInt
+  code         String        @unique
   description  String?
   transactions Transaction[]
 
@@ -231,45 +221,45 @@ model TransactionStatus {
 }
 
 model Transaction {
-  id        String            @id @default(uuid())
-  accountId String            @map("account_id")
-  account   Account           @relation(fields: [accountId], references: [id])
-  txTypeId  Int               @map("tx_type_id") @db.SmallInt
-  txType    TransactionType   @relation(fields: [txTypeId], references: [id])
-  statusId  Int               @map("status_id") @db.SmallInt
-  status    TransactionStatus @relation(fields: [statusId], references: [id])
-  amount    Decimal           @db.Decimal(18, 8)
-  externalRef String?         @map("external_ref")
-  createdAt DateTime          @default(now()) @map("created_at")
-  updatedAt DateTime          @updatedAt @map("updated_at")
+  id          String            @id @default(uuid())
+  accountId   String            @map("account_id")
+  account     Account           @relation(fields: [accountId], references: [id])
+  txTypeId    Int               @map("tx_type_id") @db.SmallInt
+  txType      TransactionType   @relation(fields: [txTypeId], references: [id])
+  statusId    Int               @map("status_id") @db.SmallInt
+  status      TransactionStatus @relation(fields: [statusId], references: [id])
+  amount      Decimal           @db.Decimal(18, 8)
+  externalRef String?           @map("external_ref")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
 
   @@map("transactions")
 }
 
 model ActorType {
-  id        Int        @id @default(autoincrement()) @db.SmallInt
-  code      String     @unique
+  id          Int        @id @default(autoincrement()) @db.SmallInt
+  code        String     @unique
   description String?
-  auditLogs AuditLog[] @relation("ActorTypeToAuditLog")
+  auditLogs   AuditLog[] @relation("ActorTypeToAuditLog")
 
   @@map("actor_types")
 }
 
 model ActionType {
-  id        Int        @id @default(autoincrement()) @db.SmallInt
-  code      String     @unique
+  id          Int        @id @default(autoincrement()) @db.SmallInt
+  code        String     @unique
   description String?
-  category  String?
-  auditLogs AuditLog[] @relation("ActionTypeToAuditLog")
+  category    String?
+  auditLogs   AuditLog[] @relation("ActionTypeToAuditLog")
 
   @@map("action_types")
 }
 
 model ObjectType {
-  id        Int        @id @default(autoincrement()) @db.SmallInt
-  code      String     @unique
+  id          Int        @id @default(autoincrement()) @db.SmallInt
+  code        String     @unique
   description String?
-  auditLogs AuditLog[] @relation("ObjectTypeToAuditLog")
+  auditLogs   AuditLog[] @relation("ObjectTypeToAuditLog")
 
   @@map("object_types")
 }

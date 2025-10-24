@@ -13,6 +13,7 @@
       </thead>
       <tbody>
         <tr v-for="item in marketData" :key="item.symbol">
+          <td>Here</td>
           <td>{{ item.symbol }}</td>
           <td>{{ item.name }}</td>
           <td>{{ item.price }}</td>
@@ -25,14 +26,14 @@
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
-import apiClient from '../utils/api'
+import { getCryptoPrices } from '../utils/crypto'
 
 const marketData = ref([])
 
 onMounted(async () => {
   try {
-    const res = await apiClient.get('/market-quotes')
-    marketData.value = res.data
+    const data = await getCryptoPrices(['BTC','ETH'])
+    marketData.value = data
   } catch (err) {
     marketData.value = []
   }

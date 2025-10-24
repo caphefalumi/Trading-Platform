@@ -80,10 +80,6 @@
         <div class="chart-footer">
           <p>Total trade</p><p>Total volume</p><p>Total value</p>
         </div>
-<<<<<<< HEAD:client/src/components/DashboardMain.vue
-      </div>      
-     </section>
-=======
       </div>
 
       <div class="trading-summary-group">
@@ -169,74 +165,8 @@
         </div>
       </div>
     </section>
->>>>>>> dev-giahieu:client/src/components/Dashboard.vue
 
     <section class="trading-section">
-<<<<<<< HEAD:client/src/components/DashboardMain.vue
-      <!-- Order Entry Card -->
-      <div class="trading-card order-entry-card">
-        <div class="card-header">
-          <h3>Order Entry</h3>
-          <div class="order-side-toggle">
-                <button :class="['side-btn', 'buy', { active: orderForm.side === 'BUY' }]"
-            @click="orderForm.side = 'BUY'">Buy</button>
-               <button :class="['side-btn', 'sell', { active: orderForm.side === 'SELL' }]"
-            @click="orderForm.side = 'SELL'">Sell</button>
-          </div>
-        </div>
-
-        <form @submit.prevent="placeOrder" class="order-form">
-          <div class="form-group">
-            <label>Instrument</label>
-            <select v-model="selectedInstrumentId" class="form-select">
-              <option v-for="instrument in instruments" :key="instrument.id" :value="instrument.id">
-                {{ instrument.symbol }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Order Type</label>
-            <select v-model="orderForm.type" class="form-select">
-              <option value="MARKET">Market</option>
-              <option value="LIMIT">Limit</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Quantity</label>
-              <input v-model="orderForm.quantity" type="number" step="0.0001" min="0" class="form-input">
-            </div>
-
-            <div class="form-group">
-              <label>Price</label>
-              <input v-model="orderForm.price" type="number" step="0.01" min="0"
-                     :disabled="orderForm.type === 'MARKET'" class="form-input">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Time in Force</label>
-            <select v-model="orderForm.timeInForce" class="form-select">
-              <option value="GTC">GTC</option>
-              <option value="IOC">IOC</option>
-              <option value="FOK">FOK</option>
-            </select>
-          </div>
-
-          <button type="submit"
-                  :class="['submit-btn', orderForm.side.toLowerCase()]"
-                  :disabled="loading.order">
-            <span v-if="loading.order" class="loading-spinner"></span>
-            {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- Deposit/Withdraw Card -->
-=======
->>>>>>> dev-giahieu:client/src/components/Dashboard.vue
       <div class="trading-card balance-card">
         <div class="balance-actions">
           <div class="action-section">
@@ -387,13 +317,6 @@ const loading = reactive({ deposit: false, withdraw: false, order: false, chart:
 const mainCandlestickChart = ref(null)
 let echartsInstance = null 
 
-<<<<<<< HEAD:client/src/components/DashboardMain.vue
-// Market insights data
-const marketInsights = ref([
-  { symbol: 'BTC', price: 28450.23, changePercent: 0.49 },
-  { symbol: 'ETH', price: 1850.74, changePercent: 0.50 }
-])
-=======
 // BIẾN QUAN TRỌNG: Biến lưu thông tin nến hiện tại (Đã được cập nhật real-time)
 const currentCandleInfo = ref(null)
 
@@ -405,7 +328,6 @@ const candlestickChartTabs = reactive([
 ]) 
 
 const marketInsights = ref([]) 
->>>>>>> dev-giahieu:client/src/components/Dashboard.vue
 
 const selectedInstrument = computed(
   () =>
@@ -1738,14 +1660,4 @@ s
     grid-template-columns: 1fr;
   }
 }
-<<<<<<< HEAD:client/src/components/DashboardMain.vue
 </style>
-
-
-
-
-
-
-=======
-</style>
->>>>>>> dev-giahieu:client/src/components/Dashboard.vue

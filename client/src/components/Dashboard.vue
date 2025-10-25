@@ -46,10 +46,19 @@
             </span>
           </div>
         </div>
-        
+
         <div class="chart-info-header" v-if="currentCandleInfo">
           <span class="info-pair">{{ currentCandleInfo.symbol }} / U.S. Dollar</span>
-          <span class="info-time">1D</span>
+
+          <!-- Time Period Selector -->
+          <div class="time-period-selector">
+            <button v-for="period in timePeriods" :key="period.value"
+                    :class="['period-btn', { active: selectedTimePeriod === period.value }]"
+                    @click="changeTimePeriod(period.value)">
+              {{ period.label }}
+            </button>
+          </div>
+
           <span class="info-label">O</span>
           <span :class="['info-value', currentCandleInfo.change >= 0 ? 'green-text' : 'red-text']">
             {{ formatNumber(currentCandleInfo.open, 2) }}
@@ -75,6 +84,11 @@
           </span>
         </div>
         <div class="chart-area-container-large">
+          <!-- Loading Overlay -->
+          <div v-if="loading.chart" class="chart-loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading chart data...</div>
+          </div>
           <div ref="mainCandlestickChart" id="main-candlestick-chart-container"></div>
         </div>
         <div class="chart-footer">
@@ -83,7 +97,7 @@
       </div>
 
       <div class="trading-summary-group">
-        
+
         <div class="trading-card order-entry-card summary-card">
           <div class="card-header">
             <h3>Summary (Order Entry)</h3>
@@ -198,7 +212,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="data-card orders-card">
         <h3>My Orders</h3>
         <div class="orders-table">
@@ -288,9 +302,9 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch, nextTick, onUnmounted } from 'vue'
-import apiClient from '../utils/api' 
-import { sessionState } from '../stores/session' 
-import * as echarts from 'echarts' 
+import apiClient from '../utils/api'
+import { sessionState } from '../stores/session'
+import * as echarts from 'echarts'
 import cmcClient from '../services/marketData'
 
 const account = computed(() => sessionState.account)
@@ -312,10 +326,10 @@ const orderForm = reactive({
 })
 
 const feedback = reactive({ success: '', error: '' })
-const loading = reactive({ deposit: false, withdraw: false, order: false, chart: false }) 
+const loading = reactive({ deposit: false, withdraw: false, order: false, chart: false })
 
 const mainCandlestickChart = ref(null)
-let echartsInstance = null 
+let echartsInstance = null
 
 // BIẾN QUAN TRỌNG: Biến lưu thông tin nến hiện tại (Đã được cập nhật real-time)
 const currentCandleInfo = ref(null)
@@ -323,11 +337,21 @@ const currentCandleInfo = ref(null)
 const selectedCandlestickChartTab = ref('BTC')
 const candlestickChartTabs = reactive([
   // Cần thêm volume vào dữ liệu mock nếu muốn hiển thị Vol
-  { symbol: 'BTC', data: null }, 
+  { symbol: 'BTC', data: null },
   { symbol: 'ETH', data: null }
-]) 
+])
 
-const marketInsights = ref([]) 
+// Time period selector
+const selectedTimePeriod = ref('1d')
+const timePeriods = [
+  { label: '1D', value: '1d' },
+  { label: '1W', value: '1w' },
+  { label: '1M', value: '1m' },
+  { label: '1Y', value: '1y' },
+  { label: 'ALL', value: 'all' }
+]
+
+const marketInsights = ref([])
 
 const selectedInstrument = computed(
   () =>
@@ -354,10 +378,10 @@ const formatChangePercent = (value) => {
 const fetchCandlestickData = async (symbol) => {
   try {
     loading.chart = true;
-    console.log(`🎯 Fetching REAL candlestick data for: ${symbol}`);
-    
-    const candleData = await cmcClient.getCandleData(symbol, 'daily');
-    
+    console.log(`🎯 Fetching REAL candlestick data for: ${symbol} (${selectedTimePeriod.value})`);
+
+    const candleData = await cmcClient.getCandleData(symbol, selectedTimePeriod.value);
+
     if (candleData && candleData.length > 0) {
       console.log(`✅ Successfully loaded ${candleData.length} REAL candles for ${symbol}`);
       return candleData;
@@ -378,14 +402,14 @@ const convertCandleDataToInfo = (symbol, rawCandleData, rawVolumeData) => {
     // Dữ liệu nến trong ECharts là [open, close, low, high]
     const open = rawCandleData[0]
     const close = rawCandleData[1]
-    const high = rawCandleData[3] 
+    const high = rawCandleData[3]
     const low = rawCandleData[2]
 
     const change = close - open
     const changePercent = (change / open) * 100
-    
-    // Lấy volume 
-    const volume = rawVolumeData ? rawVolumeData[1] : 1.364 * 1000 
+
+    // Lấy volume
+    const volume = rawVolumeData ? rawVolumeData[1] : 1.364 * 1000
 
     return {
         symbol: symbol,
@@ -393,7 +417,7 @@ const convertCandleDataToInfo = (symbol, rawCandleData, rawVolumeData) => {
         high: high,
         low: low,
         close: close,
-        change: change, 
+        change: change,
         changePercent: changePercent,
         volume: volume
     }
@@ -410,25 +434,25 @@ const initializeRealMarketData = async () => {
     // Kiểm tra trạng thái API key trước
     const status = await cmcClient.checkAPIStatus();
     apiStatus.value = status;
-    
+
     if (!status.valid) {
       console.warn('⚠️ API Key may be invalid, using fallback data');
       // Vẫn tiếp tục nhưng với cảnh báo
     }
 
     console.log('🚀 Initializing REAL market data from CoinMarketCap...');
-    
-    // Load dữ liệu thật cho cả BTC và ETH
+
+    // Load dữ liệu thật cho cả BTC và ETH với time period hiện tại
     const [btcData, ethData, latestQuotes] = await Promise.all([
-      cmcClient.getCandleData('BTC'),
-      cmcClient.getCandleData('ETH'),
+      cmcClient.getCandleData('BTC', selectedTimePeriod.value),
+      cmcClient.getCandleData('ETH', selectedTimePeriod.value),
       cmcClient.getLatestQuotes(['BTC', 'ETH'])
     ]);
-    
+
     // Cập nhật chart tabs với dữ liệu thật
     candlestickChartTabs[0].data = btcData;
     candlestickChartTabs[1].data = ethData;
-    
+
     // Cập nhật market insights với dữ liệu thật
     if (latestQuotes) {
       marketInsights.value = Object.keys(latestQuotes).map(symbol => {
@@ -441,18 +465,18 @@ const initializeRealMarketData = async () => {
           volume24h: quote.volume24h || 0
         };
       });
-      
+
       console.log('✅ Real market data loaded successfully');
     }
-    
+
     // Load biểu đồ ban đầu với dữ liệu thật
     await loadEChart(selectedCandlestickChartTab.value);
-    
+
   } catch (error) {
     console.error('❌ Error initializing REAL market data:', error);
-    apiStatus.value = { 
-      valid: false, 
-      message: `Failed to load real data: ${error.message}` 
+    apiStatus.value = {
+      valid: false,
+      message: `Failed to load real data: ${error.message}`
     };
   }
 };
@@ -465,7 +489,7 @@ const updateRealMarketData = async () => {
   try {
     // Cập nhật giá hiện tại từ API thật
     const latestQuotes = await cmcClient.getLatestQuotes(['BTC', 'ETH']);
-    
+
     if (latestQuotes && Object.keys(latestQuotes).length > 0) {
       // Cập nhật market insights với dữ liệu thật
       marketInsights.value = Object.keys(latestQuotes).map(symbol => {
@@ -482,11 +506,11 @@ const updateRealMarketData = async () => {
       if (latestQuotes[currentSymbol]) {
         const quote = latestQuotes[currentSymbol];
         const currentPrice = quote.price || 0;
-        
+
         let tab = candlestickChartTabs.find(t => t.symbol === currentSymbol);
         if (tab && tab.data && tab.data.length > 0) {
           const lastCandle = tab.data[tab.data.length - 1];
-          
+
           // Cập nhật thông tin nến hiện tại với dữ liệu thật
           currentCandleInfo.value = {
             symbol: currentSymbol,
@@ -511,7 +535,7 @@ const updateRealMarketData = async () => {
         }
       })
     })
-    
+
   } catch (error) {
     console.error('❌ Error updating REAL market data:', error);
   }
@@ -526,15 +550,15 @@ onMounted(async () => {
 
   // ⭐ Khởi tạo dữ liệu thị trường THẬT từ CoinMarketCap
   await initializeRealMarketData();
-  
+
   // ⭐ Cập nhật dữ liệu thị trường mỗi 15 giây
   const updateInterval = setInterval(updateRealMarketData, 15000);
-  
+
   // Cleanup interval khi component unmount
   onUnmounted(() => {
     clearInterval(updateInterval);
   });
-  
+
   initializeMenuInteractivity();
 });
 
@@ -544,171 +568,364 @@ const loadEChart = async (symbol) => {
   const container = mainCandlestickChart.value
   if (!container) return
 
-  loading.chart = true 
-  
-  let tab = candlestickChartTabs.find(t => t.symbol === symbol)
-  
-  if (!tab.data) {
-    tab.data = await fetchCandlestickData(symbol) 
-  }
-  
-  const fetchedData = tab.data;
+  loading.chart = true
 
-  if (!fetchedData || fetchedData.length === 0) {
-    loading.chart = false
-    if (echartsInstance) echartsInstance.setOption({ series: [] });
-    return
-  }
-  
-  // CHUYỂN ĐỔI DỮ LIỆU SANG FORMAT ECHARTS
-  // THAY ĐỔI 1: Cấu trúc dữ liệu nến cho type: 'time' -> [Timestamp, Open, Close, Low, High]
-  const candlestickDataWithTime = fetchedData.map(item => [
-      item.time * 1000, 
-      item.open, 
-      item.close, 
-      item.low, 
-      item.high
-  ]); 
-  
-  // Volume Data: [Timestamp, Volume, colorTag]
-  const volumeData = fetchedData.map(item => [
-      item.time * 1000, 
-      item.volume, 
-      item.open > item.close ? 1 : -1
-  ]); 
-  
-  // Lấy dữ liệu OHLC thuần để tính min/max price
-  const ohlcData = fetchedData.map(item => [item.open, item.close, item.low, item.high]);
+  try {
+    let tab = candlestickChartTabs.find(t => t.symbol === symbol)
 
-  const allPrices = ohlcData.flatMap(d => d)
-  const minPrice = Math.min(...allPrices) * 0.99
-  const maxPrice = Math.max(...allPrices) * 1.01
+    if (!tab.data) {
+      tab.data = await fetchCandlestickData(symbol)
+    }
 
+    const fetchedData = tab.data;
 
-  if (!echartsInstance) {
-      echartsInstance = echarts.init(container) 
-  }
-  
-  // Cập nhật currentCandleInfo với nến cuối cùng (Lần đầu load)
-  const lastCandleIndex = fetchedData.length - 1;
-  if (fetchedData.length > 0) {
-      const lastCandle = fetchedData[lastCandleIndex];
-      // Dữ liệu nến trong convertCandleDataToInfo là [open, close, low, high]
-      const lastCandleDataForInfo = [lastCandle.open, lastCandle.close, lastCandle.low, lastCandle.high]; 
-      // Dữ liệu volume [time, volume, colorTag]
-      const lastVolumeData = volumeData[lastCandleIndex]; 
-      
-      currentCandleInfo.value = convertCandleDataToInfo(symbol, lastCandleDataForInfo, lastVolumeData);
-  } else {
-      currentCandleInfo.value = null;
-  }
-  
-  // THAY ĐỔI QUAN TRỌNG: Loại bỏ listeners 'mousemove' và 'mouseout'
-  echartsInstance.off('mousemove'); 
-  echartsInstance.off('mouseout'); 
+    if (!fetchedData || fetchedData.length === 0) {
+      console.warn('No data available for chart');
+      loading.chart = false
+      if (echartsInstance) echartsInstance.setOption({ series: [] });
+      return
+    }
 
+    // Validate data structure
+    const isValidData = fetchedData.every(item =>
+      item &&
+      typeof item.time === 'number' &&
+      typeof item.open === 'number' &&
+      typeof item.close === 'number' &&
+      typeof item.high === 'number' &&
+      typeof item.low === 'number'
+    );
 
-  // Cấu hình Options (Candlestick)
+    if (!isValidData) {
+      console.error('Invalid data structure received');
+      loading.chart = false;
+      return;
+    }
+
+    // Prepare data for area chart (closing prices)
+    const lineData = fetchedData.map(item => [item.time * 1000, item.close]);
+
+    // Calculate if overall trend is up or down
+    const firstPrice = fetchedData[0].close;
+    const lastPrice = fetchedData[fetchedData.length - 1].close;
+    const isUpTrend = lastPrice >= firstPrice;
+
+    // Volume Data
+    const volumeData = fetchedData.map(item => [
+        item.time * 1000,
+        item.volume || 0,
+        item.close >= item.open ? 1 : -1
+    ]);
+
+    // Calculate price range
+    const allPrices = fetchedData.flatMap(d => [d.open, d.close, d.low, d.high]);
+    const minPrice = Math.min(...allPrices) * 0.98;
+    const maxPrice = Math.max(...allPrices) * 1.02;
+
+    if (!echartsInstance) {
+        echartsInstance = echarts.init(container)
+    }
+
+    // Update current candle info
+    if (fetchedData.length > 0) {
+        const lastCandle = fetchedData[fetchedData.length - 1];
+        currentCandleInfo.value = {
+            symbol: symbol,
+            open: lastCandle.open,
+            high: lastCandle.high,
+            low: lastCandle.low,
+            close: lastCandle.close,
+            change: lastCandle.close - lastCandle.open,
+            changePercent: ((lastCandle.close - lastCandle.open) / lastCandle.open) * 100,
+            volume: lastCandle.volume || 0
+        };
+    }
+
+  // Enhanced chart options with area fill
   const option = {
-      backgroundColor: '#27293d',
+      backgroundColor: '#1a1d29',
+      animation: true,
+      animationDuration: 800,
+      animationEasing: 'cubicOut',
       tooltip: {
           trigger: 'axis',
-          axisPointer: { type: 'cross' },
-          textStyle: { color: '#f0f0f0' },
-          borderColor: '#3a3b50',
-          backgroundColor: 'rgba(39, 41, 61, 0.85)',
-          // Giữ lại tooltip để người dùng vẫn có thể xem chi tiết từng nến nếu cần
-          formatter: function (params) {
-              const data = params[0].data;
-              if (data.length !== 5) return ''; // Đã bao gồm timestamp nên là 5 phần tử
-              const timeStr = echarts.format.formatTime('yyyy-MM-dd', data[0]);
-              return [
-                  `**${symbol}**`,
-                  `Time: ${timeStr}`,
-                  `Open: ${data[1].toFixed(2)}`,
-                  `Close: ${data[2].toFixed(2)}`,
-                  `Low: ${data[3].toFixed(2)}`,
-                  `High: ${data[4].toFixed(2)}`
-              ].join('<br>');
-          }
-      },
-      grid: {
-          left: '5%',
-          right: '5%',
-          bottom: '10%',
-          top: '15%', 
-          containLabel: true
-      },
-      // THAY ĐỔI 2: Đổi trục X sang type 'time'
-      xAxis: {
-          type: 'time', 
-          // Bỏ data: ECharts sẽ tự lấy từ series
-          axisLine: { lineStyle: { color: '#3a3b50' } },
-          axisLabel: {
-            // ⭐ Đảm bảo màu chữ là trắng sáng
-            color: 'white', 
-            padding: [0, 8, 0, 8],
-            fformatter: function (value) {
-                const date = new Date(value);
-                const day = date.getDate();
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const month = monthNames[date.getMonth()];
-                
-                if (day === 1 || day === 15) {
-                    return `${month} ${day}`;
-                } else {
-                    return day; 
-                }
-            }
-          },
-          boundaryGap: false, 
-          splitLine: { show: false }
-      },
-      yAxis: {
-          scale: true,
-          axisLine: { lineStyle: { color: '#3a3b50' } },
-          axisLabel: { color: 'white' },
-          splitLine: { lineStyle: { color: '#3a3b50' } },
-          min: minPrice.toFixed(2),
-          max: maxPrice.toFixed(2)
-      },
-      series: [
-          {
-              name: symbol,
-              type: 'candlestick',
-              // THAY ĐỔI 3: Dùng dữ liệu nến đã có timestamp
-              data: candlestickDataWithTime, 
-              itemStyle: {
-                  color: '#00b050', 
-                  color0: '#e53935', 
-                  borderColor: '#00b050',
-                  borderColor0: '#e53935'
-              },
-              emphasis: {
-                itemStyle: {
-                    borderWidth: 1
-                }
+          axisPointer: {
+              type: 'cross',
+              crossStyle: { color: '#666' },
+              lineStyle: {
+                  type: 'dashed',
+                  color: '#666',
+                  width: 1
               }
           },
+          backgroundColor: 'rgba(20, 23, 36, 0.95)',
+          borderColor: '#2d3142',
+          borderWidth: 1,
+          textStyle: {
+              color: '#e5e7eb',
+              fontSize: 13
+          },
+          padding: [12, 16],
+          formatter: function (params) {
+              const dataPoint = params[0];
+              if (!dataPoint) return '';
+
+              const date = new Date(dataPoint.value[0]);
+              const price = dataPoint.value[1];
+
+              const dateStr = date.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+              });
+
+              // Find corresponding candle data for OHLCV
+              const candle = fetchedData.find(d => d.time * 1000 === dataPoint.value[0]);
+
+              if (candle) {
+                  const change = candle.close - candle.open;
+                  const changePercent = (change / candle.open * 100).toFixed(2);
+                  const changeColor = change >= 0 ? '#10b981' : '#ef4444';
+
+                  return `
+                      <div style="font-weight: 600; margin-bottom: 8px;">${dateStr}</div>
+                      <div style="display: flex; gap: 20px; margin-bottom: 4px;">
+                          <span style="color: #9ca3af;">Price:</span>
+                          <span style="color: ${changeColor}; font-weight: 600;">$${price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                      </div>
+                      <div style="display: flex; gap: 20px; margin-bottom: 4px;">
+                          <span style="color: #9ca3af;">Change:</span>
+                          <span style="color: ${changeColor};">${changePercent}%</span>
+                      </div>
+                      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d3142;">
+                          <div><span style="color: #9ca3af;">O:</span> $${candle.open.toFixed(2)}</div>
+                          <div><span style="color: #9ca3af;">H:</span> $${candle.high.toFixed(2)}</div>
+                          <div><span style="color: #9ca3af;">L:</span> $${candle.low.toFixed(2)}</div>
+                          <div><span style="color: #9ca3af;">C:</span> $${candle.close.toFixed(2)}</div>
+                      </div>
+                      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d3142;">
+                          <span style="color: #9ca3af;">Vol 24h:</span> $${(candle.volume / 1000000).toFixed(2)}M
+                      </div>
+                  `;
+              }
+
+              return `
+                  <div style="font-weight: 600;">${dateStr}</div>
+                  <div style="margin-top: 4px;">Price: $${price.toFixed(2)}</div>
+              `;
+          }
+      },
+      grid: [
+          {
+              left: '3%',
+              right: '3%',
+              top: '8%',
+              height: '68%',
+              containLabel: true
+          },
+          {
+              left: '3%',
+              right: '3%',
+              top: '80%',
+              height: '15%',
+              containLabel: true
+          }
+      ],
+      xAxis: [
+          {
+              type: 'time',
+              gridIndex: 0,
+              axisLine: {
+                  lineStyle: { color: '#2d3142' }
+              },
+              axisLabel: {
+                  color: '#9ca3af',
+                  fontSize: 11,
+                  formatter: function (value, index) {
+                      try {
+                          const date = new Date(value);
+                          const day = date.getDate();
+                          const month = date.toLocaleDateString('en-US', { month: 'short' });
+
+                          // Show month for first day or every 5 days
+                          if (day === 1 || day % 5 === 0) {
+                              return month + ' ' + day;
+                          }
+                          return String(day);
+                      } catch (e) {
+                          return '';
+                      }
+                  }
+              },
+              axisTick: { show: false },
+              splitLine: { show: false },
+              boundaryGap: false
+          },
+          {
+              type: 'time',
+              gridIndex: 1,
+              axisLine: { lineStyle: { color: '#2d3142' } },
+              axisLabel: { show: false },
+              axisTick: { show: false },
+              splitLine: { show: false }
+          }
+      ],
+      yAxis: [
+          {
+              type: 'value',
+              gridIndex: 0,
+              scale: true,
+              position: 'right',
+              axisLine: { show: false },
+              axisLabel: {
+                  color: '#9ca3af',
+                  fontSize: 11,
+                  formatter: function (value) {
+                      if (value >= 1000) {
+                          return (value / 1000).toFixed(1) + 'K';
+                      }
+                      return value.toFixed(0);
+                  }
+              },
+              axisTick: { show: false },
+              splitLine: {
+                  lineStyle: {
+                      color: '#2d3142',
+                      type: 'dashed'
+                  }
+              },
+              min: minPrice,
+              max: maxPrice
+          },
+          {
+              type: 'value',
+              gridIndex: 1,
+              scale: true,
+              position: 'right',
+              axisLine: { show: false },
+              axisLabel: { show: false },
+              axisTick: { show: false },
+              splitLine: { show: false }
+          }
+      ],
+      dataZoom: [
+          {
+              type: 'inside',
+              xAxisIndex: [0, 1],
+              start: 0,
+              end: 100,
+              minValueSpan: 3600 * 24 * 1000 * 3  // Minimum 3 days
+          }
+      ],
+      series: [
+          // Area chart with gradient fill
+          {
+              name: 'Price',
+              type: 'line',
+              data: lineData,
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: {
+                  color: isUpTrend ? '#10b981' : '#ef4444',
+                  width: 2,
+                  shadowColor: isUpTrend ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+                  shadowBlur: 8,
+                  shadowOffsetY: 2
+              },
+              areaStyle: {
+                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                      {
+                          offset: 0,
+                          color: isUpTrend ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'
+                      },
+                      {
+                          offset: 0.5,
+                          color: isUpTrend ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                      },
+                      {
+                          offset: 1,
+                          color: isUpTrend ? 'rgba(16, 185, 129, 0)' : 'rgba(239, 68, 68, 0)'
+                      }
+                  ])
+              },
+              emphasis: {
+                  focus: 'series',
+                  lineStyle: { width: 3 }
+              }
+          },
+          // Volume bars
+          {
+              name: 'Volume',
+              type: 'bar',
+              data: volumeData.map(item => [item[0], item[1]]),
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              itemStyle: {
+                  color: function(params) {
+                      const vol = volumeData[params.dataIndex];
+                      return vol[2] > 0 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+                  }
+              },
+              barMaxWidth: 3
+          }
       ]
   }
 
   echartsInstance.setOption(option, true)
-  
+
   if (!container.__resizeObserver) {
       container.__resizeObserver = new ResizeObserver(() => {
           echartsInstance.resize()
       });
       container.__resizeObserver.observe(container);
   }
-  
-  loading.chart = false 
+
+  loading.chart = false
+  } catch (error) {
+    console.error('Error loading chart:', error);
+    loading.chart = false;
+  }
 }
 
 const selectCandlestickChartTab = (symbol) => {
   if (selectedCandlestickChartTab.value === symbol) return
   selectedCandlestickChartTab.value = symbol
-  loadEChart(symbol) 
+  loadEChart(symbol)
+}
+
+// Change time period for candle chart
+const changeTimePeriod = async (period) => {
+  if (selectedTimePeriod.value === period) return
+
+  selectedTimePeriod.value = period
+  loading.chart = true
+
+  try {
+    console.log(`📊 Loading ${period} data for ${selectedCandlestickChartTab.value}...`)
+
+    // Reload data for both BTC and ETH with new time period
+    const [btcData, ethData] = await Promise.all([
+      cmcClient.getCandleData('BTC', period),
+      cmcClient.getCandleData('ETH', period)
+    ])
+
+    // Update chart tabs
+    candlestickChartTabs[0].data = btcData
+    candlestickChartTabs[1].data = ethData
+
+    // Reload current chart
+    await loadEChart(selectedCandlestickChartTab.value)
+
+    console.log(`✅ ${period} data loaded successfully`)
+  } catch (error) {
+    console.error(`❌ Error loading ${period} data:`, error)
+  } finally {
+    loading.chart = false
+  }
 }
 
 const drawMiniChart = (element, isPositive) => {
@@ -745,16 +962,16 @@ const resetDashboardState = () => {
 
 const fetchInstruments = async () => {
   try {
-    const { data } = await apiClient.get('/api/instruments') 
+    const { data } = await apiClient.get('/api/instruments')
     instruments.value = data
     if (!selectedInstrumentId.value && data.length) {
       selectedInstrumentId.value = data[0].id
     }
-    
-    marketInsights.value = data.slice(0, 2).map(i => ({ 
-      symbol: i.symbol, 
-      price: Math.random() * 1000 + 10000, 
-      changePercent: (Math.random() - 0.5) * 1.5 
+
+    marketInsights.value = data.slice(0, 2).map(i => ({
+      symbol: i.symbol,
+      price: Math.random() * 1000 + 10000,
+      changePercent: (Math.random() - 0.5) * 1.5
     }))
   } catch (error) {
     setError(error.response?.data?.error || 'Unable to load instruments')
@@ -834,11 +1051,11 @@ const submitWithdraw = async () => {
 const usdEquivalent = computed(() => {
   const price = orderForm.type === 'MARKET' ? (orderBook.value.asks[0]?.price || orderBook.value.bids[0]?.price || 0) : Number.parseFloat(orderForm.price || 0);
   const qty = Number.parseFloat(orderForm.quantity || 0);
-  
+
   if (price === 0 || isNaN(price) || isNaN(qty)) {
     return 'USD 0.00';
   }
-  
+
   const total = price * qty;
   return `USD ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 });
@@ -848,14 +1065,14 @@ const submitButtonLabel = computed(() => {
   const qty = Number.parseFloat(orderForm.quantity || 0).toFixed(2);
   const symbol = selectedInstrument.value?.symbol || '';
   const type = orderForm.type;
-  
+
   let priceText;
   if (type === 'MARKET') {
     priceText = 'MKT';
   } else {
     priceText = orderForm.price ? `${orderForm.price} ${type.slice(0, 3)}` : 'Limit/Stop Price';
   }
-  
+
   return `${side} ${qty} ${symbol} @ ${priceText}`;
 });
 
@@ -1087,7 +1304,7 @@ const initializeMenuInteractivity = () => {
 .top-insights-grid {
   display: grid;
   /* Chỉnh lại để fit cho 2 item */
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -1151,7 +1368,7 @@ const initializeMenuInteractivity = () => {
 /* Main Widgets Grid MỚI */
 .widgets-grid-new {
   display: grid;
-  grid-template-columns: 2.5fr 1fr; 
+  grid-template-columns: 2.5fr 1fr;
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -1161,7 +1378,7 @@ const initializeMenuInteractivity = () => {
   border-radius: 12px;
   padding: 20px;
   /* Đã THÊM: Dùng để định vị tuyệt đối các phần tử con */
-  position: relative; 
+  position: relative;
 }
 
 .widget-header {
@@ -1169,7 +1386,7 @@ const initializeMenuInteractivity = () => {
   justify-content: space-between;
   align-items: center;
   /* Điều chỉnh margin-bottom để thanh info header nằm gần chart hơn */
-  margin-bottom: 10px; 
+  margin-bottom: 10px;
 }
 
 .widget-header h2 {
@@ -1177,58 +1394,113 @@ const initializeMenuInteractivity = () => {
   font-weight: 500;
 }
 
-/* Chart Widget - MỚI */
+/* Chart Widget - Enhanced Dark Theme */
+.candlestick-chart-widget {
+  background: linear-gradient(135deg, #1e2139 0%, #1a1d29 100%);
+  border: 1px solid #2d3142;
+}
+
 .candlestick-chart-widget .widget-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  padding: 16px 20px;
+  background: rgba(26, 29, 41, 0.6);
+  border-bottom: 1px solid #2d3142;
 }
 
 .candlestick-chart-widget .tabs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .candlestick-chart-widget .tab {
-  padding: 8px 16px;
-  background-color: var(--dark-bg);
-  border-radius: 6px;
+  padding: 8px 20px;
+  background-color: transparent;
+  border: 1px solid #2d3142;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  color: #9ca3af;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.candlestick-chart-widget .tab:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #e5e7eb;
 }
 
 .candlestick-chart-widget .tab.active {
-  background-color: var(--accent-color);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #3b82f6;
   color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-/* BỔ SUNG: Thanh thông tin giá chi tiết - Đã điều chỉnh để hiển thị bên trong khung chart */
+/* BỔ SUNG: Thanh thông tin giá chi tiết */
 .chart-info-header {
-    /* THAY ĐỔI QUAN TRỌNG */
-    position: absolute; 
-    top: 85px; /* Điều chỉnh vị trí dưới Tabs (khoảng 20px padding + 45px tabs/header) */
+    position: absolute;
+    top: 85px;
     left: 20px;
-    z-index: 10; /* Đảm bảo nó nằm trên biểu đồ */
-    
-    background-color: rgba(39, 41, 61, 0.85); /* Thêm độ trong suốt */
-    padding: 8px 15px; /* Giảm padding cho gọn */
-    margin: 0; /* Bỏ margin âm cũ */
-    
-    border-radius: 8px;
+    z-index: 10;
+
+    background: linear-gradient(135deg, rgba(26, 29, 41, 0.95) 0%, rgba(30, 33, 57, 0.95) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid #2d3142;
+    padding: 12px 18px;
+    margin: 0;
+
+    border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 8px; /* GIẢM gap để Label và Value dính vào nhau */
-    /* THAY ĐỔI: Tăng font-size cơ bản */
-    font-size: 16px; 
-    flex-wrap: wrap; 
+    gap: 12px;
+    font-size: 14px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .chart-info-header .info-pair {
-    font-weight: bold;
-    color: var(--text-color-light);
-    /* THAY ĐỔI: Tăng kích thước cặp giao dịch */
-    font-size: 18px; 
+    font-weight: 700;
+    color: #e5e7eb;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+}
+
+/* Time Period Selector Styles */
+.time-period-selector {
+    display: flex;
+    gap: 4px;
+    margin: 0 16px;
+    background: rgba(20, 23, 36, 0.6);
+    border: 1px solid #2d3142;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.time-period-selector .period-btn {
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text-color-faded, #6b7280);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.time-period-selector .period-btn:hover {
+    background: var(--hover-bg, #252a3a);
+    color: var(--text-color-light, #e5e7eb);
+}
+
+.time-period-selector .period-btn.active {
+    background: var(--primary-color, #3b82f6);
+    color: white;
+    font-weight: 600;
 }
 
 .chart-info-header .info-time {
@@ -1243,7 +1515,7 @@ const initializeMenuInteractivity = () => {
 
 /* Điều chỉnh lại spacing cho volume label */
 .chart-info-header .info-volume-label {
-    margin-left: 10px; 
+    margin-left: 10px;
 }
 
 
@@ -1259,7 +1531,7 @@ const initializeMenuInteractivity = () => {
 
 .chart-area-container-large {
   /* GIỮ NGUYÊN: Tăng chiều cao để có thêm không gian cho biểu đồ và info header */
-  height: 480px; 
+  height: 480px;
   width: 100%;
   margin-bottom: 15px;
 }
@@ -1268,6 +1540,52 @@ const initializeMenuInteractivity = () => {
 #main-candlestick-chart-container {
     width: 100%;
     height: 100%;
+    background: #1a1d29;
+    border-radius: 8px;
+}
+
+.chart-area-container-large {
+    background: #1a1d29;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    min-height: 400px;
+}
+
+/* Loading Overlay */
+.chart-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 29, 41, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #2d3142;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    margin-top: 16px;
+    color: #9ca3af;
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .chart-footer {
@@ -1293,13 +1611,13 @@ const initializeMenuInteractivity = () => {
 
 .summary-card {
   /* Cho Order Entry card chiếm phần trên của cột phải */
-  flex-grow: 1; 
+  flex-grow: 1;
 }
 
 /* Account Summary Widget (Phần còn lại) */
 .account-summary-widget {
   /* Cho Account Summary card chiếm phần dưới của cột phải */
-  flex-grow: 1; 
+  flex-grow: 1;
 }
 
 
@@ -1480,11 +1798,7 @@ const initializeMenuInteractivity = () => {
   cursor: not-allowed;
 }
 
-/* Balance Actions (giữ nguyên) */
-.balance-card {
-  /* Đã chuyển sang trading-section */
-}
-
+/* Balance Actions */
 .balance-actions {
   display: flex;
   flex-direction: column;
@@ -1617,7 +1931,7 @@ const initializeMenuInteractivity = () => {
   color: var(--green-color) !important;
 }
 
-.red-text { 
+.red-text {
   color: var(--red-color) !important;
 }
 

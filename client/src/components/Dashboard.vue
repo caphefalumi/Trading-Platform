@@ -176,12 +176,10 @@
                 <input v-model="depositAmount" type="number" step="0.01" min="0"
                        :placeholder="`Amount in ${accountCurrency}`" class="form-input">
               </div>
-              <button type="submit"
-                :class="['submit-btn', orderForm.side.toLowerCase()]"
-                :disabled="loading.order">
-                <span v-if="loading.order" class="loading-spinner"></span>
-                    {{ orderForm.side }} {{ selectedInstrument?.symbol || '' }}
-               </button>
+              <button type="submit" :disabled="loading.deposit" class="action-btn deposit-btn">
+              <span v-if="loading.deposit" class="loading-spinner"></span>
+                 Deposit
+              </button>
             </form>
           </div>
 
@@ -289,10 +287,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, reactive, ref, watch, nextTick, onUnmounted } from 'vue'
 import apiClient from '../utils/api' 
 import { sessionState } from '../stores/session' 
 import * as echarts from 'echarts' 
+import cmcClient from '../services/marketData'
 
 const account = computed(() => sessionState.account)
 const instruments = ref([])
@@ -302,6 +301,7 @@ const orders = ref([])
 const accountCurrency = ref('USDT')
 const depositAmount = ref('')
 const withdrawAmount = ref('')
+const accountSummary = ref(null)
 
 const orderForm = reactive({
   side: 'BUY',
@@ -348,6 +348,31 @@ const formatChangePercent = (value) => {
   return `${sign}${value.toFixed(2)}%`
 }
 
+// =======================================================
+// ⭐ HÀM FETCH DỮ LIỆU BIỂU ĐỒ NẾN TỪ COINMARKETCAP API ⭐
+// =======================================================
+const fetchCandlestickData = async (symbol) => {
+  try {
+    loading.chart = true;
+    console.log(`🎯 Fetching REAL candlestick data for: ${symbol}`);
+    
+    const candleData = await cmcClient.getCandleData(symbol, 'daily');
+    
+    if (candleData && candleData.length > 0) {
+      console.log(`✅ Successfully loaded ${candleData.length} REAL candles for ${symbol}`);
+      return candleData;
+    } else {
+      console.warn(`⚠️ No candle data returned for ${symbol}`);
+      return [];
+    }
+  } catch (error) {
+    console.error(`❌ Error fetching candlestick data for ${symbol}:`, error);
+    return [];
+  } finally {
+    loading.chart = false;
+  }
+};
+
 // Hàm chuyển đổi dữ liệu nến thô sang format hiển thị trên thanh info
 const convertCandleDataToInfo = (symbol, rawCandleData, rawVolumeData) => {
     // Dữ liệu nến trong ECharts là [open, close, low, high]
@@ -374,132 +399,145 @@ const convertCandleDataToInfo = (symbol, rawCandleData, rawVolumeData) => {
     }
 }
 
+// Thêm biến để theo dõi trạng thái API
+const apiStatus = ref({ valid: true, message: 'Connecting to real market data...' });
 
 // =======================================================
-// ⭐ HÀM FETCH DỮ LIỆU BIỂU ĐỒ NẾN (MOCK) ⭐
+// ⭐ KIỂM TRA VÀ KHỞI TẠO API THẬT ⭐
 // =======================================================
-const fetchCandlestickData = (symbol) => {
-  const generateCandlestickData = (basePrice, numDays = 60) => {
-    const data = []
-    let currentPrice = basePrice
-    // Tính toán thời gian bắt đầu (60 ngày trước)
-    let currentTime = Date.now() - (numDays * 24 * 60 * 60 * 1000) 
-
-    for (let i = 0; i < numDays; i++) {
-      const time = Math.floor(currentTime / 1000)
-      const open = currentPrice
-      const high = open * (1 + (Math.random() * 0.03)) 
-      const low = open * (1 - (Math.random() * 0.03)) 
-      const close = low + (Math.random() * (high - low))
-      const volume = Math.random() * 100000 + 50000 
-
-      currentPrice = close + (Math.random() - 0.5) * basePrice * 0.02 
-
-      data.push({
-        time: time,
-        open: parseFloat(open.toFixed(2)),
-        high: parseFloat(high.toFixed(2)),
-        low: parseFloat(low.toFixed(2)),
-        close: parseFloat(close.toFixed(2)),
-        volume: parseFloat(volume.toFixed(2)) 
-      })
-      currentTime += (24 * 60 * 60 * 1000) 
+const initializeRealMarketData = async () => {
+  try {
+    // Kiểm tra trạng thái API key trước
+    const status = await cmcClient.checkAPIStatus();
+    apiStatus.value = status;
+    
+    if (!status.valid) {
+      console.warn('⚠️ API Key may be invalid, using fallback data');
+      // Vẫn tiếp tục nhưng với cảnh báo
     }
-    return data
+
+    console.log('🚀 Initializing REAL market data from CoinMarketCap...');
+    
+    // Load dữ liệu thật cho cả BTC và ETH
+    const [btcData, ethData, latestQuotes] = await Promise.all([
+      cmcClient.getCandleData('BTC'),
+      cmcClient.getCandleData('ETH'),
+      cmcClient.getLatestQuotes(['BTC', 'ETH'])
+    ]);
+    
+    // Cập nhật chart tabs với dữ liệu thật
+    candlestickChartTabs[0].data = btcData;
+    candlestickChartTabs[1].data = ethData;
+    
+    // Cập nhật market insights với dữ liệu thật
+    if (latestQuotes) {
+      marketInsights.value = Object.keys(latestQuotes).map(symbol => {
+        const quote = latestQuotes[symbol];
+        return {
+          symbol: symbol,
+          price: quote.price || 0,
+          changePercent: quote.changePercent || 0,
+          // Thêm volume để hiển thị nếu cần
+          volume24h: quote.volume24h || 0
+        };
+      });
+      
+      console.log('✅ Real market data loaded successfully');
+    }
+    
+    // Load biểu đồ ban đầu với dữ liệu thật
+    await loadEChart(selectedCandlestickChartTab.value);
+    
+  } catch (error) {
+    console.error('❌ Error initializing REAL market data:', error);
+    apiStatus.value = { 
+      valid: false, 
+      message: `Failed to load real data: ${error.message}` 
+    };
   }
-  const basePrice = symbol === 'BTC' ? 40000 : 2500
-  return new Promise(resolve => {
-    setTimeout(() => { 
-      resolve(generateCandlestickData(basePrice))
-    }, 500)
-  })
-}
+};
+
 
 // =======================================================
-// ⭐ HÀM CẬP NHẬT DỮ LIỆU THỊ TRƯỜNG VÀ NẾN CUỐI CÙNG (REAL-TIME MOCK) ⭐
+// ⭐ CẬP NHẬT DỮ LIỆU THỊ TRƯỜNG THỜI GIAN THỰC ⭐
 // =======================================================
-const updateMarketData = () => {
-    // 1. Cập nhật Market Insight Cards (giữ nguyên)
-    marketInsights.value.forEach((insight, index) => {
-        if (insight.price && insight.symbol) {
-            const changePercent = (Math.random() - 0.5) * 1.5
-            const newPrice = insight.price * (1 + changePercent / 100)
+const updateRealMarketData = async () => {
+  try {
+    // Cập nhật giá hiện tại từ API thật
+    const latestQuotes = await cmcClient.getLatestQuotes(['BTC', 'ETH']);
+    
+    if (latestQuotes && Object.keys(latestQuotes).length > 0) {
+      // Cập nhật market insights với dữ liệu thật
+      marketInsights.value = Object.keys(latestQuotes).map(symbol => {
+        const quote = latestQuotes[symbol];
+        return {
+          symbol: symbol,
+          price: quote.price || 0,
+          changePercent: quote.changePercent || 0
+        };
+      });
 
-            marketInsights.value[index] = {
-                ...insight,
-                price: newPrice,
-                changePercent
-            }
-        }
-    })
-
-    // 2. BỔ SUNG: Cập nhật nến cuối cùng của Tab đang hiển thị
-    const currentSymbol = selectedCandlestickChartTab.value
-    let tab = candlestickChartTabs.find(t => t.symbol === currentSymbol)
-
-    if (tab && tab.data && tab.data.length > 0) {
-        let lastCandle = tab.data[tab.data.length - 1]
-
-        // Mô phỏng sự thay đổi nhỏ của giá (factor 0.001 = 0.1% thay đổi tối đa)
-        const priceChangeFactor = 1 + (Math.random() - 0.5) * 0.001 
-
-        const newClose = parseFloat((lastCandle.close * priceChangeFactor).toFixed(2))
-        const newOpen = lastCandle.open // Giữ Open không đổi trong suốt ngày
+      // Cập nhật current candle info với dữ liệu thật
+      const currentSymbol = selectedCandlestickChartTab.value;
+      if (latestQuotes[currentSymbol]) {
+        const quote = latestQuotes[currentSymbol];
+        const currentPrice = quote.price || 0;
         
-        // Cập nhật High và Low
-        const newHigh = Math.max(lastCandle.high, newClose, newOpen)
-        const newLow = Math.min(lastCandle.low, newClose, newOpen)
-        const newVolume = lastCandle.volume + Math.random() * 5000 // Tăng nhẹ Volume
-
-        // Cập nhật dữ liệu nến (Chỉ cập nhật nến cuối cùng trong tab.data)
-        tab.data[tab.data.length - 1] = {
-            ...lastCandle,
-            close: newClose,
-            high: parseFloat(newHigh.toFixed(2)),
-            low: parseFloat(newLow.toFixed(2)),
-            volume: parseFloat(newVolume.toFixed(2))
+        let tab = candlestickChartTabs.find(t => t.symbol === currentSymbol);
+        if (tab && tab.data && tab.data.length > 0) {
+          const lastCandle = tab.data[tab.data.length - 1];
+          
+          // Cập nhật thông tin nến hiện tại với dữ liệu thật
+          currentCandleInfo.value = {
+            symbol: currentSymbol,
+            open: lastCandle.open,
+            high: Math.max(lastCandle.high, currentPrice, quote.high24h || 0),
+            low: Math.min(lastCandle.low, currentPrice, quote.low24h || 0),
+            close: currentPrice,
+            change: currentPrice - lastCandle.open,
+            changePercent: quote.changePercent || 0,
+            volume: quote.volume24h || lastCandle.volume || 0
+          };
         }
-        
-        // CẬP NHẬT currentCandleInfo VỚI DỮ LIỆU NẾN MỚI
-        const newCandleData = [newOpen, newClose, newLow, newHigh] 
-        const newVolumeData = [Date.now(), newVolume, newOpen > newClose ? 1 : -1]
-
-        currentCandleInfo.value = convertCandleDataToInfo(
-            currentSymbol, 
-            newCandleData, 
-            newVolumeData
-        )
-        
-        // CẬP NHẬT BIỂU ĐỒ ECHARTS VỚI DỮ LIỆU NẾN MỚI
-        if (echartsInstance) {
-            // Chuẩn bị dữ liệu mới cho ECharts
-            const updatedCandleData = tab.data.map(item => [
-                item.time * 1000, 
-                item.open, 
-                item.close, 
-                item.low, 
-                item.high
-            ]);
-
-            echartsInstance.setOption({
-                series: [
-                    { data: updatedCandleData }
-                    // Có thể cần thêm series volume nếu có
-                ]
-            });
-        }
+      }
     }
 
-    // 3. Cập nhật Mini Charts (giữ nguyên)
+    // Cập nhật Mini Charts
     nextTick(() => {
-        marketInsights.value.forEach((insight) => {
-            const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
-            if (element) {
-                drawMiniChart(element, insight.changePercent >= 0)
-            }
-        })
+      marketInsights.value.forEach((insight) => {
+        const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
+        if (element) {
+          drawMiniChart(element, insight.changePercent >= 0)
+        }
+      })
     })
-}
+    
+  } catch (error) {
+    console.error('❌ Error updating REAL market data:', error);
+  }
+};
+
+// Cập nhật hàm onMounted
+onMounted(async () => {
+  await fetchInstruments();
+  if (selectedInstrumentId.value) {
+    await fetchOrderBook();
+  }
+
+  // ⭐ Khởi tạo dữ liệu thị trường THẬT từ CoinMarketCap
+  await initializeRealMarketData();
+  
+  // ⭐ Cập nhật dữ liệu thị trường mỗi 15 giây
+  const updateInterval = setInterval(updateRealMarketData, 15000);
+  
+  // Cleanup interval khi component unmount
+  onUnmounted(() => {
+    clearInterval(updateInterval);
+  });
+  
+  initializeMenuInteractivity();
+});
+
 
 
 const loadEChart = async (symbol) => {
@@ -886,21 +924,6 @@ watch(selectedInstrumentId, async (instrumentId) => {
   await fetchOrderBook()
 })
 
-onMounted(async () => {
-  await fetchInstruments()
-  if (selectedInstrumentId.value) {
-    await fetchOrderBook()
-  }
-
-  await nextTick()
-  await loadEChart(selectedCandlestickChartTab.value) 
-  updateMarketData()
-
-  // THAY ĐỔI ĐÃ ÁP DỤNG: Cập nhật dữ liệu thị trường (top insight cards và nến cuối cùng) mỗi 1 giây
-  setInterval(updateMarketData, 1000) 
-
-  initializeMenuInteractivity()
-})
 
 const initializeMenuInteractivity = () => {
   const menuItems = document.querySelectorAll('.menu li')
@@ -1651,7 +1674,7 @@ const initializeMenuInteractivity = () => {
   .sidebar {
     display: none;
   }
-s
+
   .top-insights-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }

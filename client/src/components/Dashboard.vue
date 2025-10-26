@@ -372,9 +372,6 @@ const formatChangePercent = (value) => {
   return `${sign}${value.toFixed(2)}%`
 }
 
-// =======================================================
-// ⭐ HÀM FETCH DỮ LIỆU BIỂU ĐỒ NẾN TỪ COINMARKETCAP API ⭐
-// =======================================================
 const fetchCandlestickData = async (symbol) => {
   try {
     loading.chart = true;
@@ -397,63 +394,28 @@ const fetchCandlestickData = async (symbol) => {
   }
 };
 
-// Hàm chuyển đổi dữ liệu nến thô sang format hiển thị trên thanh info
-const convertCandleDataToInfo = (symbol, rawCandleData, rawVolumeData) => {
-    // Dữ liệu nến trong ECharts là [open, close, low, high]
-    const open = rawCandleData[0]
-    const close = rawCandleData[1]
-    const high = rawCandleData[3]
-    const low = rawCandleData[2]
-
-    const change = close - open
-    const changePercent = (change / open) * 100
-
-    // Lấy volume
-    const volume = rawVolumeData ? rawVolumeData[1] : 1.364 * 1000
-
-    return {
-        symbol: symbol,
-        open: open,
-        high: high,
-        low: low,
-        close: close,
-        change: change,
-        changePercent: changePercent,
-        volume: volume
-    }
-}
-
-// Thêm biến để theo dõi trạng thái API
 const apiStatus = ref({ valid: true, message: 'Connecting to real market data...' });
 
-// =======================================================
-// ⭐ KIỂM TRA VÀ KHỞI TẠO API THẬT ⭐
-// =======================================================
 const initializeRealMarketData = async () => {
   try {
-    // Kiểm tra trạng thái API key trước
     const status = await cmcClient.checkAPIStatus();
     apiStatus.value = status;
 
     if (!status.valid) {
       console.warn('⚠️ API Key may be invalid, using fallback data');
-      // Vẫn tiếp tục nhưng với cảnh báo
     }
 
     console.log('🚀 Initializing REAL market data from CoinMarketCap...');
 
-    // Load dữ liệu thật cho cả BTC và ETH với time period hiện tại
     const [btcData, ethData, latestQuotes] = await Promise.all([
       cmcClient.getCandleData('BTC', selectedTimePeriod.value),
       cmcClient.getCandleData('ETH', selectedTimePeriod.value),
       cmcClient.getLatestQuotes(['BTC', 'ETH'])
     ]);
 
-    // Cập nhật chart tabs với dữ liệu thật
     candlestickChartTabs[0].data = btcData;
     candlestickChartTabs[1].data = ethData;
 
-    // Cập nhật market insights với dữ liệu thật
     if (latestQuotes) {
       marketInsights.value = Object.keys(latestQuotes).map(symbol => {
         const quote = latestQuotes[symbol];
@@ -461,7 +423,6 @@ const initializeRealMarketData = async () => {
           symbol: symbol,
           price: quote.price || 0,
           changePercent: quote.changePercent || 0,
-          // Thêm volume để hiển thị nếu cần
           volume24h: quote.volume24h || 0
         };
       });
@@ -469,7 +430,6 @@ const initializeRealMarketData = async () => {
       console.log('✅ Real market data loaded successfully');
     }
 
-    // Load biểu đồ ban đầu với dữ liệu thật
     await loadEChart(selectedCandlestickChartTab.value);
 
   } catch (error) {
@@ -482,9 +442,6 @@ const initializeRealMarketData = async () => {
 };
 
 
-// =======================================================
-// ⭐ CẬP NHẬT DỮ LIỆU THỊ TRƯỜNG THỜI GIAN THỰC ⭐
-// =======================================================
 const updateRealMarketData = async () => {
   try {
     // Cập nhật giá hiện tại từ API thật
@@ -526,7 +483,6 @@ const updateRealMarketData = async () => {
       }
     }
 
-    // Cập nhật Mini Charts
     nextTick(() => {
       marketInsights.value.forEach((insight) => {
         const element = document.querySelector(`[data-symbol="${insight.symbol}"] .mini-chart`)
@@ -541,20 +497,16 @@ const updateRealMarketData = async () => {
   }
 };
 
-// Cập nhật hàm onMounted
 onMounted(async () => {
   await fetchInstruments();
   if (selectedInstrumentId.value) {
     await fetchOrderBook();
   }
 
-  // ⭐ Khởi tạo dữ liệu thị trường THẬT từ CoinMarketCap
   await initializeRealMarketData();
 
-  // ⭐ Cập nhật dữ liệu thị trường mỗi 15 giây
   const updateInterval = setInterval(updateRealMarketData, 15000);
 
-  // Cleanup interval khi component unmount
   onUnmounted(() => {
     clearInterval(updateInterval);
   });
@@ -586,7 +538,6 @@ const loadEChart = async (symbol) => {
       return
     }
 
-    // Validate data structure
     const isValidData = fetchedData.every(item =>
       item &&
       typeof item.time === 'number' &&
@@ -602,22 +553,18 @@ const loadEChart = async (symbol) => {
       return;
     }
 
-    // Prepare data for area chart (closing prices)
     const lineData = fetchedData.map(item => [item.time * 1000, item.close]);
 
-    // Calculate if overall trend is up or down
     const firstPrice = fetchedData[0].close;
     const lastPrice = fetchedData[fetchedData.length - 1].close;
     const isUpTrend = lastPrice >= firstPrice;
 
-    // Volume Data
     const volumeData = fetchedData.map(item => [
         item.time * 1000,
         item.volume || 0,
         item.close >= item.open ? 1 : -1
     ]);
 
-    // Calculate price range
     const allPrices = fetchedData.flatMap(d => [d.open, d.close, d.low, d.high]);
     const minPrice = Math.min(...allPrices) * 0.98;
     const maxPrice = Math.max(...allPrices) * 1.02;
@@ -626,7 +573,6 @@ const loadEChart = async (symbol) => {
         echartsInstance = echarts.init(container)
     }
 
-    // Update current candle info
     if (fetchedData.length > 0) {
         const lastCandle = fetchedData[fetchedData.length - 1];
         currentCandleInfo.value = {
@@ -641,7 +587,6 @@ const loadEChart = async (symbol) => {
         };
     }
 
-  // Enhanced chart options with area fill
   const option = {
       backgroundColor: '#1a1d29',
       animation: true,
@@ -681,7 +626,6 @@ const loadEChart = async (symbol) => {
                   minute: '2-digit'
               });
 
-              // Find corresponding candle data for OHLCV
               const candle = fetchedData.find(d => d.time * 1000 === dataPoint.value[0]);
 
               if (candle) {
@@ -749,7 +693,6 @@ const loadEChart = async (symbol) => {
                           const day = date.getDate();
                           const month = date.toLocaleDateString('en-US', { month: 'short' });
 
-                          // Show month for first day or every 5 days
                           if (day === 1 || day % 5 === 0) {
                               return month + ' ' + day;
                           }
@@ -816,11 +759,10 @@ const loadEChart = async (symbol) => {
               xAxisIndex: [0, 1],
               start: 0,
               end: 100,
-              minValueSpan: 3600 * 24 * 1000 * 3  // Minimum 3 days
+              minValueSpan: 3600 * 24 * 1000 * 3
           }
       ],
       series: [
-          // Area chart with gradient fill
           {
               name: 'Price',
               type: 'line',
@@ -857,7 +799,6 @@ const loadEChart = async (symbol) => {
                   lineStyle: { width: 3 }
               }
           },
-          // Volume bars
           {
               name: 'Volume',
               type: 'bar',
@@ -897,7 +838,6 @@ const selectCandlestickChartTab = (symbol) => {
   loadEChart(symbol)
 }
 
-// Change time period for candle chart
 const changeTimePeriod = async (period) => {
   if (selectedTimePeriod.value === period) return
 
@@ -907,17 +847,14 @@ const changeTimePeriod = async (period) => {
   try {
     console.log(`📊 Loading ${period} data for ${selectedCandlestickChartTab.value}...`)
 
-    // Reload data for both BTC and ETH with new time period
     const [btcData, ethData] = await Promise.all([
       cmcClient.getCandleData('BTC', period),
       cmcClient.getCandleData('ETH', period)
     ])
 
-    // Update chart tabs
     candlestickChartTabs[0].data = btcData
     candlestickChartTabs[1].data = ethData
 
-    // Reload current chart
     await loadEChart(selectedCandlestickChartTab.value)
 
     console.log(`✅ ${period} data loaded successfully`)
@@ -1047,34 +984,7 @@ const submitWithdraw = async () => {
     loading.withdraw = false
   }
 }
-// Thêm biến cho giá trị USD tính toán và nhãn nút nhấn
-const usdEquivalent = computed(() => {
-  const price = orderForm.type === 'MARKET' ? (orderBook.value.asks[0]?.price || orderBook.value.bids[0]?.price || 0) : Number.parseFloat(orderForm.price || 0);
-  const qty = Number.parseFloat(orderForm.quantity || 0);
 
-  if (price === 0 || isNaN(price) || isNaN(qty)) {
-    return 'USD 0.00';
-  }
-
-  const total = price * qty;
-  return `USD ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
-});
-
-const submitButtonLabel = computed(() => {
-  const side = orderForm.side;
-  const qty = Number.parseFloat(orderForm.quantity || 0).toFixed(2);
-  const symbol = selectedInstrument.value?.symbol || '';
-  const type = orderForm.type;
-
-  let priceText;
-  if (type === 'MARKET') {
-    priceText = 'MKT';
-  } else {
-    priceText = orderForm.price ? `${orderForm.price} ${type.slice(0, 3)}` : 'Limit/Stop Price';
-  }
-
-  return `${side} ${qty} ${symbol} @ ${priceText}`;
-});
 
 const placeOrder = async () => {
   if (!account.value?.id || !selectedInstrumentId.value) {
@@ -1116,11 +1026,6 @@ const placeOrder = async () => {
   }
 }
 
-
-// -------------------------------------------------------------------
-// LIFECYCLE VÀ WATCHERS
-// -------------------------------------------------------------------
-
 watch(
   () => account.value?.id,
   async (accountId) => {
@@ -1157,7 +1062,6 @@ const initializeMenuInteractivity = () => {
 </script>
 
 <style >
-/* Import Font Awesome */
 @import url('https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css');
 
 /* CSS Variables */

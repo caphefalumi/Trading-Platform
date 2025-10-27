@@ -179,16 +179,6 @@ export const oauthGoogle = async (req, res) => {
             password: bcrypt.hashSync(crypto.randomUUID(), 10)
           },
         })
-
-        await tx.accountBalance.create({
-          data: {
-            accountId: account.id,
-            currencyId: currency.id,
-            available: new Prisma.Decimal(0),
-            reserved: new Prisma.Decimal(0),
-            total: new Prisma.Decimal(0),
-          },
-        })
       })
     }
 

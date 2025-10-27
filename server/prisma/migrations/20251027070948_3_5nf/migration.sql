@@ -170,20 +170,6 @@ CREATE TABLE `ledger_entries` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `account_balances` (
-    `id` VARCHAR(191) NOT NULL,
-    `accountId` VARCHAR(191) NOT NULL,
-    `currencyId` VARCHAR(191) NOT NULL,
-    `available` DECIMAL(18, 8) NOT NULL,
-    `reserved` DECIMAL(18, 8) NOT NULL,
-    `total` DECIMAL(18, 8) NOT NULL,
-    `updatedAt` DATETIME(3) NOT NULL,
-
-    UNIQUE INDEX `account_balances_accountId_currencyId_key`(`accountId`, `currencyId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `market_quotes` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `instrument_id` VARCHAR(191) NOT NULL,
@@ -322,12 +308,6 @@ ALTER TABLE `ledger_entries` ADD CONSTRAINT `ledger_entries_account_id_fkey` FOR
 
 -- AddForeignKey
 ALTER TABLE `ledger_entries` ADD CONSTRAINT `ledger_entries_entry_type_id_fkey` FOREIGN KEY (`entry_type_id`) REFERENCES `ledger_entry_types`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `account_balances` ADD CONSTRAINT `account_balances_accountId_fkey` FOREIGN KEY (`accountId`) REFERENCES `accounts`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `account_balances` ADD CONSTRAINT `account_balances_currencyId_fkey` FOREIGN KEY (`currencyId`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `market_quotes` ADD CONSTRAINT `market_quotes_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `instruments`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

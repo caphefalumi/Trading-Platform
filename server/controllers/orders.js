@@ -608,3 +608,26 @@ export const getOrderBook = async (req, res) => {
     res.status(500).json({ error: error.message })
   }
 }
+
+export const listAccountExecutions = async (req, res) => {
+  const accountId = req.params.accountId
+  if (!accountId) return res.status(400).json({ error: 'Missing accountId' })
+  try {
+    const executions = await prisma.execution.findMany({
+      where: {
+        order: {
+          accountId: accountId,
+        },
+      },
+      include: {
+        order: true,
+      },
+      orderBy: { executedAt: 'desc' },
+      take: 50,
+    })
+    res.json(executions)
+  } catch (err) {
+    console.error('Failed to fetch executions:', err)
+    res.status(500).json({ error: err.message })
+  }
+}

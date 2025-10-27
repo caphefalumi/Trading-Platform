@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
-import DashboardView from '../views/DashboardView.vue'
+import DashboardView from '../views/HomeView.vue'
+import MarketDataView from '../views/MarketDataView.vue'
+import TradeView from '../views/TradeView.vue'
 import { sessionState, initSession, clearUser } from '../stores/session'
-import apiClient from '../utils/api'
 
 const routes = [
   {
@@ -26,6 +27,23 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
+    meta: {},
+  },
+  {
+    path: '/market',
+    name: 'market-data',
+    component: MarketDataView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/trade',
+    name: 'trade',
+    component: TradeView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile',
+    name: 'profile',
     meta: { requiresAuth: true },
   },
   {

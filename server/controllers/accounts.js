@@ -11,8 +11,8 @@ export const listUserAccounts = async (req, res) => {
     const accounts = await prisma.account.findMany({
       where: { userId },
       include: {
-        currency: true,
-        balance: true,
+        baseCurrency: true,
+        balances: true,
       },
       orderBy: { createdAt: 'asc' },
     })
@@ -25,11 +25,11 @@ export const listUserAccounts = async (req, res) => {
 export const getAccountSummary = async (req, res) => {
   const { accountId } = req.params
   try {
+    // Get account and positions
     const account = await prisma.account.findUnique({
       where: { id: accountId },
       include: {
-        currency: true,
-        balance: true,
+        baseCurrency: true,
         positions: {
           include: {
             instrument: {
@@ -44,21 +44,32 @@ export const getAccountSummary = async (req, res) => {
         },
       },
     })
-
     if (!account) {
       return res.status(404).json({ error: 'Account not found' })
     }
 
-    const balance = account.balance || {
-      available: new Prisma.Decimal(0),
-      reserved: new Prisma.Decimal(0),
-      total: new Prisma.Decimal(0),
+    // Compute cash balance by summing deposits/withdrawals from transactions
+    const cashTxs = await prisma.transaction.findMany({
+      where: {
+        accountId,
+        status: { code: 'COMPLETED' },
+        txType: { code: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
+      },
+      include: { txType: true },
+    })
+    // If you want to filter by currency, filter in JS:
+    // const baseCurrencyId = account.baseCurrencyId
+    // const filteredTxs = cashTxs.filter(tx => tx.currencyId === baseCurrencyId)
+    let cashAvailable = 0
+    for (const tx of cashTxs) {
+      if (tx.txType.code === 'DEPOSIT') cashAvailable += Number(tx.amount)
+      if (tx.txType.code === 'WITHDRAWAL') cashAvailable -= Number(tx.amount)
     }
 
+    // Compute portfolio from positions and market prices
     const portfolio = account.positions.map((position) => {
       const lastQuote = position.instrument.marketQuotes[0]
-      const markPrice =
-        lastQuote?.lastPrice || lastQuote?.bidPrice || lastQuote?.askPrice || new Prisma.Decimal(0)
+      const markPrice = lastQuote?.lastPrice || lastQuote?.bidPrice || lastQuote?.askPrice || new Prisma.Decimal(0)
       const marketValue = toDecimal(position.quantity).mul(toDecimal(markPrice))
       return {
         instrumentId: position.instrumentId,
@@ -70,26 +81,25 @@ export const getAccountSummary = async (req, res) => {
         marketValue: formatDecimal(marketValue),
       }
     })
-
     const portfolioValue = portfolio.reduce((sum, holding) => sum + holding.marketValue, 0)
 
     res.json({
       account: {
         id: account.id,
-        name: account.accountName,
-        currency: account.currency.code,
+        name: account.email,
+        currency: account.baseCurrency.code,
         balance: {
-          available: formatDecimal(balance.available),
-          reserved: formatDecimal(balance.reserved),
-          total: formatDecimal(balance.total),
+          available: cashAvailable,
+          reserved: 0,
+          total: cashAvailable,
         },
       },
       portfolio,
       totals: {
-        cashAvailable: formatDecimal(balance.available),
-        cashReserved: formatDecimal(balance.reserved),
+        cashAvailable,
+        cashReserved: 0,
         portfolioValue,
-        equity: formatDecimal(balance.available) + portfolioValue,
+        equity: cashAvailable + portfolioValue,
       },
     })
   } catch (error) {
@@ -139,44 +149,6 @@ export const depositFunds = async (req, res) => {
       }
 
       const depositAmount = toDecimal(amount)
-      const balance = account.balance
-        ? {
-            available: toDecimal(account.balance.available),
-            reserved: toDecimal(account.balance.reserved),
-            total: toDecimal(account.balance.total),
-          }
-        : {
-            available: new Prisma.Decimal(0),
-            reserved: new Prisma.Decimal(0),
-            total: new Prisma.Decimal(0),
-          }
-
-      const updatedBalance = {
-        available: balance.available.add(depositAmount),
-        reserved: balance.reserved,
-      }
-      updatedBalance.total = updatedBalance.available.add(updatedBalance.reserved)
-
-      if (account.balance) {
-        await tx.accountBalance.update({
-          where: { accountId },
-          data: {
-            available: updatedBalance.available,
-            reserved: updatedBalance.reserved,
-            total: updatedBalance.total,
-          },
-        })
-      } else {
-        await tx.accountBalance.create({
-          data: {
-            accountId,
-            currencyId: account.currencyId,
-            available: updatedBalance.available,
-            reserved: updatedBalance.reserved,
-            total: updatedBalance.total,
-          },
-        })
-      }
 
       const [ledgerTypeId, txMeta] = await Promise.all([
         getLedgerEntryTypeId('DEPOSIT'),
@@ -203,9 +175,9 @@ export const depositFunds = async (req, res) => {
       })
 
       return {
-        available: formatDecimal(updatedBalance.available),
-        reserved: formatDecimal(updatedBalance.reserved),
-        total: formatDecimal(updatedBalance.total),
+        available: formatDecimal(depositAmount),
+        reserved: 0,
+        total: formatDecimal(depositAmount),
       }
     })
 
@@ -230,29 +202,11 @@ export const withdrawFunds = async (req, res) => {
         include: { balance: true, currency: true },
       })
 
-      if (!account || !account.balance) {
-        throw new Error('Account or balance not found')
+      if (!account) {
+        throw new Error('Account not found')
       }
 
       const withdrawalAmount = toDecimal(amount)
-      const available = toDecimal(account.balance.available)
-
-      if (available.lt(withdrawalAmount)) {
-        throw new Error('Insufficient available balance')
-      }
-
-      const reserved = toDecimal(account.balance.reserved)
-      const newAvailable = available.sub(withdrawalAmount)
-      const newTotal = newAvailable.add(reserved)
-
-      await tx.accountBalance.update({
-        where: { accountId },
-        data: {
-          available: newAvailable,
-          reserved,
-          total: newTotal,
-        },
-      })
 
       const [ledgerTypeId, txMeta] = await Promise.all([
         getLedgerEntryTypeId('WITHDRAWAL'),
@@ -279,9 +233,77 @@ export const withdrawFunds = async (req, res) => {
       })
 
       return {
-        available: formatDecimal(newAvailable),
-        reserved: formatDecimal(reserved),
-        total: formatDecimal(newTotal),
+        available: formatDecimal(withdrawalAmount.neg()),
+        reserved: 0,
+        total: formatDecimal(withdrawalAmount.neg()),
+      }
+    })
+
+    res.json({ success: true, balance: result })
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+}
+
+export const demoCreditFunds = async (req, res) => {
+  const { accountId } = req.params
+  const { amount, currencyCode } = req.body
+
+  if (!amount || Number(amount) <= 0) {
+    return res.status(400).json({ error: 'Demo credit amount must be greater than zero' })
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const account = await tx.account.findUnique({
+        where: { id: accountId },
+        include: { balances: true, baseCurrency: true },
+      })
+
+      if (!account) {
+        throw new Error('Account not found')
+      }
+
+      // Resolve currency for the demo credit. Prefer provided currencyCode, otherwise account base currency.
+      let currencyId = account.baseCurrencyId
+      if (currencyCode) {
+        const currency = await tx.currency.findUnique({ where: { code: currencyCode } })
+        if (!currency) throw new Error(`Currency ${currencyCode} not found`)
+        currencyId = currency.id
+      }
+
+      const creditAmount = toDecimal(amount)
+
+      const [ledgerTypeId, txMeta] = await Promise.all([
+        getLedgerEntryTypeId('DEPOSIT'),
+        getTransactionMeta('DEPOSIT'),
+      ])
+
+      await tx.ledgerEntry.create({
+        data: {
+          accountId,
+          entryTypeId: ledgerTypeId,
+          amount: creditAmount,
+          currencyId,
+          referenceTable: 'account_balances',
+        },
+      })
+
+      await tx.transaction.create({
+        data: {
+          accountId,
+          txTypeId: txMeta.txTypeId,
+          statusId: txMeta.statusId,
+          amount: creditAmount,
+          currencyId,
+        },
+      })
+
+      return {
+        currencyId,
+        available: formatDecimal(creditAmount),
+        reserved: 0,
+        total: formatDecimal(creditAmount),
       }
     })
 

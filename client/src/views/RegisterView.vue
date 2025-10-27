@@ -35,18 +35,6 @@
             required
           />
           <v-text-field
-            v-model="form.accountName"
-            label="Account Name *"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-            :rules="accountNameRules"
-            :error-messages="errors.accountName"
-            @input="errors.accountName = ''"
-            prepend-inner-icon="mdi-account"
-            required
-          />
-          <v-text-field
             v-model="form.password"
             label="Password *"
             type="password"
@@ -84,7 +72,6 @@ const router = useRouter()
 
 const form = reactive({
   email: '',
-  accountName: '',
   password: '',
 })
 
@@ -96,7 +83,6 @@ const feedback = reactive({
 
 const errors = reactive({
   email: '',
-  accountName: '',
   password: '',
 })
 
@@ -104,12 +90,6 @@ const errors = reactive({
 const emailRules = [
   (v) => !!v || 'Email is required',
   (v) => /.+@.+\..+/.test(v) || 'Email must be valid',
-]
-
-// Account name validation rules
-const accountNameRules = [
-  (v) => !!v || 'Account name is required',
-  (v) => (v && v.length >= 2) || 'Account name must be at least 2 characters',
 ]
 
 // Password validation rules
@@ -120,7 +100,6 @@ const passwordRules = [
 
 const clearErrors = () => {
   errors.email = ''
-  errors.accountName = ''
   errors.password = ''
 }
 
@@ -136,7 +115,6 @@ const handleRegister = async () => {
 
     // Clear form
     form.email = ''
-    form.accountName = ''
     form.password = ''
 
     // Redirect to login after 2 seconds
@@ -150,7 +128,6 @@ const handleRegister = async () => {
     // Set field-specific errors
     if (errorData?.fields) {
       if (errorData.fields.email) errors.email = errorData.error
-      if (errorData.fields.accountName) errors.accountName = errorData.error
       if (errorData.fields.password) errors.password = errorData.error
     }
   } finally {

@@ -1,9 +1,8 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../utils/prisma.js'
-import 'crypto'
+import crypto from 'crypto'
 import { Prisma } from '@prisma/client'
 import { createSession, deleteSession } from '../utils/session.js'
-import 'crypto'
 // Input validation helpers
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -15,18 +14,14 @@ const validatePassword = (password) => {
   return password && password.length >= 8
 }
 
-const validateAccountName = (name) => {
-  return name && name.trim().length >= 2
-}
-
 export const register = async (req, res) => {
-  const { email, accountName, password } = req.body
+  const { email, password } = req.body
 
   // Validate required fields
-  if (!email || !accountName || !password) {
+  if (!email || !password) {
     return res.status(400).json({
       error: 'All fields are required.',
-      fields: { email: !email, accountName: !accountName, password: !password },
+      fields: { email: !email, password: !password },
     })
   }
 
@@ -35,14 +30,6 @@ export const register = async (req, res) => {
     return res.status(400).json({
       error: 'Please enter a valid email address.',
       fields: { email: true },
-    })
-  }
-
-  // Validate account name
-  if (!validateAccountName(accountName)) {
-    return res.status(400).json({
-      error: 'Account name must be at least 2 characters long.',
-      fields: { accountName: true },
     })
   }
 
@@ -55,6 +42,9 @@ export const register = async (req, res) => {
   }
 
   try {
+    const currency = await prisma.currency.findUnique({
+        where: { code: 'USDT' },
+    })
     // Check if email already exists
     const existingAccount = await prisma.account.findUnique({
       where: { email: email.toLowerCase() },
@@ -71,11 +61,11 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10)
     await prisma.account.create({
       data: {
-        id: uuidv7(),
-        username,
         email,
         password: hashedPassword,
-        provider,
+        baseCurrency: {
+          connect: { id: currency.id }
+        }
       },
     })
     res.status(201).json({ success: 'account created.' })
@@ -101,7 +91,7 @@ export const login = async (req, res) => {
   // Validate email format
   if (!validateEmail(email)) {
     return res.status(400).json({
-      error: 'Please enter a valid email 123 address.',
+      error: 'Please enter a valid email address.',
       fields: { email: true },
     })
   }
@@ -112,7 +102,6 @@ export const login = async (req, res) => {
       select: {
         id: true,
         email: true,
-        accountName: true,
         password: true,
         createdAt: true,
       },
@@ -190,19 +179,10 @@ export const oauthGoogle = async (req, res) => {
         account = await tx.account.create({
           data: {
             email: email.toLowerCase(),
-            accountName: name || email.split('@')[0],
-            currencyId: currency.id,
-            password: bcrypt.hashSync(crypto.randomUUID(), 10)
-          },
-        })
-
-        await tx.accountBalance.create({
-          data: {
-            accountId: account.id,
-            currencyId: currency.id,
-            available: new Prisma.Decimal(0),
-            reserved: new Prisma.Decimal(0),
-            total: new Prisma.Decimal(0),
+            password: bcrypt.hashSync(crypto.randomUUID(), 10),
+            baseCurrency: {
+              connect: { id: currency.id }
+            }
           },
         })
       })

@@ -26,7 +26,6 @@ export const createSession = async (accountId) => {
         select: {
           id: true,
           email: true,
-          accountName: true,
           createdAt: true,
         },
       },
@@ -47,7 +46,6 @@ export const validateSession = async (token) => {
         select: {
           id: true,
           email: true,
-          accountName: true,
           createdAt: true,
         },
       },

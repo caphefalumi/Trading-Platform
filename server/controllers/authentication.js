@@ -42,6 +42,9 @@ export const register = async (req, res) => {
   }
 
   try {
+    const currency = await prisma.currency.findUnique({
+        where: { code: 'USDT' },
+    })
     // Check if email already exists
     const existingAccount = await prisma.account.findUnique({
       where: { email: email.toLowerCase() },
@@ -58,10 +61,11 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10)
     await prisma.account.create({
       data: {
-        id: uuidv7(),
         email,
         password: hashedPassword,
-        provider,
+        baseCurrency: {
+          connect: { id: currency.id }
+        }
       },
     })
     res.status(201).json({ success: 'account created.' })
@@ -175,8 +179,10 @@ export const oauthGoogle = async (req, res) => {
         account = await tx.account.create({
           data: {
             email: email.toLowerCase(),
-            baseCurrencyId: currency.id,
-            password: bcrypt.hashSync(crypto.randomUUID(), 10)
+            password: bcrypt.hashSync(crypto.randomUUID(), 10),
+            baseCurrency: {
+              connect: { id: currency.id }
+            }
           },
         })
       })

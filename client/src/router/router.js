@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
-import DashboardView from '../views/HomeView.vue'
+import DashboardView from '../views/DashboardView.vue'
 import MarketDataView from '../views/MarketDataView.vue'
 import TradeView from '../views/TradeView.vue'
+import OrderHistoryView from '../views/OrderHistoryView.vue'
 import { sessionState, initSession, clearUser } from '../stores/session'
 
 const routes = [
@@ -42,6 +43,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/orders',
+    name: 'orders',
+    component: OrderHistoryView,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile',
     name: 'profile',
     meta: { requiresAuth: true },
@@ -57,8 +64,17 @@ const router = createRouter({
   routes,
 })
 
+// Initialize session once on app startup
+let sessionInitialized = false
+
 // Validate session with server on protected routes
 router.beforeEach(async (to) => {
+  // Initialize session on first navigation if not already done
+  if (!sessionInitialized && !sessionState.isLoading) {
+    sessionInitialized = true
+    await initSession()
+  }
+
   // If route requires authentication
   if (to.meta.requiresAuth) {
     // Check with server if session is valid

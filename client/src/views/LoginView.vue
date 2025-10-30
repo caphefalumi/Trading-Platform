@@ -165,3 +165,72 @@ const loginUsingOAuth = async (response) => {
   }
 }
 </script>
+
+<style scoped>
+.v-container {
+  background: #0f1117;
+  min-height: 100vh;
+}
+
+:deep(.v-card) {
+  background: linear-gradient(135deg, #1e2139 0%, #1a1d29 100%) !important;
+  border: 1px solid #2d3142;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+:deep(.v-card-title) {
+  color: #e5e7eb;
+  font-weight: 700;
+}
+
+:deep(.v-divider) {
+  border-color: #2d3142;
+}
+
+:deep(.v-field) {
+  background: rgba(15, 17, 23, 0.6);
+  border: 1px solid #2d3142;
+}
+
+:deep(.v-field--focused) {
+  border-color: #3b82f6;
+}
+
+:deep(.v-label) {
+  color: #e5e7eb;
+}
+
+:deep(.v-field__input) {
+  color: #e5e7eb;
+}
+
+:deep(.v-text-field input) {
+  color: #e5e7eb;
+}
+
+:deep(.v-icon) {
+  color: #9ca3af;
+}
+
+:deep(.v-btn) {
+  text-transform: none;
+  font-weight: 600;
+}
+
+:deep(.text-body-2) {
+  color: #9ca3af;
+}
+
+:deep(.text-caption) {
+  color: #6b7280;
+}
+
+:deep(.v-alert) {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.oauth-button {
+  width: 100%;
+}
+</style>

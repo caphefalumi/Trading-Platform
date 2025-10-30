@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { clearUser } from '../stores/session'
-import router from '../router'
+import router from '../router/router'
 
 // 1. Client cho Backend của bạn (giữ nguyên)
 const apiClient = axios.create({
@@ -26,10 +26,10 @@ apiClient.interceptors.response.use(
 // -----------------------------------------------------------
 const cmcClient = axios.create({
   // CMC_BASE_URL: "https://sandbox-api.coinmarketcap.com"
-  baseURL: import.meta.env.CMC_BASE_URL, 
+  baseURL: import.meta.env.CMC_BASE_URL,
   headers: {
     // API Key được đặt trong Header
-    'X-CMC-Pro-API-Key': import.meta.env.COINMARKETCAP_API_KEY, 
+    'X-CMC-Pro-API-Key': import.meta.env.COINMARKETCAP_API_KEY,
     'Accept': 'application/json',
   },
   // CMC không cần withCredentials: true
@@ -40,5 +40,5 @@ const cmcClient = axios.create({
 // -----------------------------------------------------------
 
 export default apiClient
-// 3. Export client mới
-export { cmcClient }
+// Named exports for convenience
+export { apiClient as api, cmcClient }

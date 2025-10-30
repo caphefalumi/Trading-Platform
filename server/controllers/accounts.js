@@ -131,7 +131,7 @@ const getTransactionMeta = async (typeCode) => {
 
 export const depositFunds = async (req, res) => {
   const { accountId } = req.params
-  const { amount } = req.body
+  const { amount, currencyCode } = req.body
 
   if (!amount || Number(amount) <= 0) {
     return res.status(400).json({ error: 'Deposit amount must be greater than zero' })
@@ -141,14 +141,55 @@ export const depositFunds = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const account = await tx.account.findUnique({
         where: { id: accountId },
-        include: { balance: true, currency: true },
+        include: { baseCurrency: true },
       })
 
       if (!account) {
         throw new Error('Account not found')
       }
 
+      // Use provided currency or default to account's base currency
+      let currencyId = account.baseCurrencyId
+      if (currencyCode) {
+        const currency = await tx.currency.findUnique({ where: { code: currencyCode } })
+        if (!currency) throw new Error(`Currency ${currencyCode} not found`)
+        currencyId = currency.id
+      }
+
       const depositAmount = toDecimal(amount)
+
+      // Get or create account balance for this currency
+      let balance = await tx.accountBalance.findUnique({
+        where: {
+          accountId_currencyId: {
+            accountId,
+            currencyId,
+          },
+        },
+      })
+
+      if (!balance) {
+        balance = await tx.accountBalance.create({
+          data: {
+            accountId,
+            currencyId,
+            available: 0,
+            reserved: 0,
+            total: 0,
+          },
+        })
+      }
+
+      const newAvailable = toDecimal(balance.available).add(depositAmount)
+      const newTotal = toDecimal(balance.total).add(depositAmount)
+
+      const updatedBalance = await tx.accountBalance.update({
+        where: { id: balance.id },
+        data: {
+          available: newAvailable,
+          total: newTotal,
+        },
+      })
 
       const [ledgerTypeId, txMeta] = await Promise.all([
         getLedgerEntryTypeId('DEPOSIT'),
@@ -160,7 +201,8 @@ export const depositFunds = async (req, res) => {
           accountId,
           entryTypeId: ledgerTypeId,
           amount: depositAmount,
-          currencyId: account.currencyId,
+          referenceTable: 'account_balances',
+          referenceId: balance.id,
         },
       })
 
@@ -170,26 +212,26 @@ export const depositFunds = async (req, res) => {
           txTypeId: txMeta.txTypeId,
           statusId: txMeta.statusId,
           amount: depositAmount,
-          currencyId: account.currencyId,
         },
       })
 
       return {
-        available: formatDecimal(depositAmount),
-        reserved: 0,
-        total: formatDecimal(depositAmount),
+        available: formatDecimal(updatedBalance.available),
+        reserved: formatDecimal(updatedBalance.reserved),
+        total: formatDecimal(updatedBalance.total),
       }
     })
 
     res.json({ success: true, balance: result })
   } catch (error) {
+    console.error('Deposit error:', error)
     res.status(400).json({ error: error.message })
   }
 }
 
 export const withdrawFunds = async (req, res) => {
   const { accountId } = req.params
-  const { amount } = req.body
+  const { amount, currencyCode } = req.body
 
   if (!amount || Number(amount) <= 0) {
     return res.status(400).json({ error: 'Withdrawal amount must be greater than zero' })
@@ -199,14 +241,54 @@ export const withdrawFunds = async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const account = await tx.account.findUnique({
         where: { id: accountId },
-        include: { balance: true, currency: true },
+        include: { baseCurrency: true },
       })
 
       if (!account) {
         throw new Error('Account not found')
       }
 
+      // Use provided currency or default to account's base currency
+      let currencyId = account.baseCurrencyId
+      if (currencyCode) {
+        const currency = await tx.currency.findUnique({ where: { code: currencyCode } })
+        if (!currency) throw new Error(`Currency ${currencyCode} not found`)
+        currencyId = currency.id
+      }
+
       const withdrawalAmount = toDecimal(amount)
+
+      // Get account balance for this currency
+      const balance = await tx.accountBalance.findUnique({
+        where: {
+          accountId_currencyId: {
+            accountId,
+            currencyId,
+          },
+        },
+      })
+
+      if (!balance) {
+        throw new Error('No balance found for this currency')
+      }
+
+      const currentAvailable = toDecimal(balance.available)
+
+      // Check sufficient funds
+      if (currentAvailable.lt(withdrawalAmount)) {
+        throw new Error('Insufficient funds')
+      }
+
+      const newAvailable = currentAvailable.sub(withdrawalAmount)
+      const newTotal = toDecimal(balance.total).sub(withdrawalAmount)
+
+      const updatedBalance = await tx.accountBalance.update({
+        where: { id: balance.id },
+        data: {
+          available: newAvailable,
+          total: newTotal,
+        },
+      })
 
       const [ledgerTypeId, txMeta] = await Promise.all([
         getLedgerEntryTypeId('WITHDRAWAL'),
@@ -218,7 +300,8 @@ export const withdrawFunds = async (req, res) => {
           accountId,
           entryTypeId: ledgerTypeId,
           amount: withdrawalAmount.neg(),
-          currencyId: account.currencyId,
+          referenceTable: 'account_balances',
+          referenceId: balance.id,
         },
       })
 
@@ -228,19 +311,19 @@ export const withdrawFunds = async (req, res) => {
           txTypeId: txMeta.txTypeId,
           statusId: txMeta.statusId,
           amount: withdrawalAmount.neg(),
-          currencyId: account.currencyId,
         },
       })
 
       return {
-        available: formatDecimal(withdrawalAmount.neg()),
-        reserved: 0,
-        total: formatDecimal(withdrawalAmount.neg()),
+        available: formatDecimal(updatedBalance.available),
+        reserved: formatDecimal(updatedBalance.reserved),
+        total: formatDecimal(updatedBalance.total),
       }
     })
 
     res.json({ success: true, balance: result })
   } catch (error) {
+    console.error('Withdrawal error:', error)
     res.status(400).json({ error: error.message })
   }
 }
@@ -274,6 +357,39 @@ export const demoCreditFunds = async (req, res) => {
 
       const creditAmount = toDecimal(amount)
 
+      // Get or create account balance for this currency
+      let balance = await tx.accountBalance.findUnique({
+        where: {
+          accountId_currencyId: {
+            accountId,
+            currencyId,
+          },
+        },
+      })
+
+      if (!balance) {
+        balance = await tx.accountBalance.create({
+          data: {
+            accountId,
+            currencyId,
+            available: 0,
+            reserved: 0,
+            total: 0,
+          },
+        })
+      }
+
+      const newAvailable = toDecimal(balance.available).add(creditAmount)
+      const newTotal = toDecimal(balance.total).add(creditAmount)
+
+      const updatedBalance = await tx.accountBalance.update({
+        where: { id: balance.id },
+        data: {
+          available: newAvailable,
+          total: newTotal,
+        },
+      })
+
       const [ledgerTypeId, txMeta] = await Promise.all([
         getLedgerEntryTypeId('DEPOSIT'),
         getTransactionMeta('DEPOSIT'),
@@ -284,8 +400,8 @@ export const demoCreditFunds = async (req, res) => {
           accountId,
           entryTypeId: ledgerTypeId,
           amount: creditAmount,
-          currencyId,
           referenceTable: 'account_balances',
+          referenceId: balance.id,
         },
       })
 
@@ -295,20 +411,81 @@ export const demoCreditFunds = async (req, res) => {
           txTypeId: txMeta.txTypeId,
           statusId: txMeta.statusId,
           amount: creditAmount,
-          currencyId,
         },
       })
 
       return {
         currencyId,
-        available: formatDecimal(creditAmount),
-        reserved: 0,
-        total: formatDecimal(creditAmount),
+        available: formatDecimal(updatedBalance.available),
+        reserved: formatDecimal(updatedBalance.reserved),
+        total: formatDecimal(updatedBalance.total),
       }
     })
 
     res.json({ success: true, balance: result })
   } catch (error) {
+    console.error('Demo credit error:', error)
+    res.status(400).json({ error: error.message })
+  }
+}
+
+export const getAccountBalance = async (req, res) => {
+  const { accountId } = req.params
+  const { currencyCode } = req.query
+
+  try {
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      include: {
+        baseCurrency: true,
+        balances: {
+          include: {
+            currency: true,
+          },
+        },
+      },
+    })
+
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' })
+    }
+
+    // If specific currency requested, return that balance
+    if (currencyCode) {
+      const balance = account.balances.find(b => b.currency.code === currencyCode)
+      if (!balance) {
+        return res.json({
+          currency: currencyCode,
+          available: 0,
+          reserved: 0,
+          total: 0,
+        })
+      }
+      return res.json({
+        currency: balance.currency.code,
+        available: formatDecimal(balance.available),
+        reserved: formatDecimal(balance.reserved),
+        total: formatDecimal(balance.total),
+      })
+    }
+
+    // Return all balances
+    const balances = account.balances.map(b => ({
+      currency: b.currency.code,
+      currencySymbol: b.currency.symbol,
+      available: formatDecimal(b.available),
+      reserved: formatDecimal(b.reserved),
+      total: formatDecimal(b.total),
+    }))
+
+    res.json({
+      accountId: account.id,
+      email: account.email,
+      baseCurrency: account.baseCurrency.code,
+      balances,
+    })
+  } catch (error) {
+    console.error('Get balance error:', error)
     res.status(400).json({ error: error.message })
   }
 }

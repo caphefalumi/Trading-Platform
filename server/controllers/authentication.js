@@ -117,13 +117,18 @@ export const login = async (req, res) => {
       return res.status(401).json({
         error: 'Invalid email or password.',
       })
-    } // Create session
+    }
+    
+    // Create session
     const session = await createSession(account.id)
+    
+    // Set session cookie
     res.cookie('sessionId', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (matches session expiration)
+      path: '/',
     })
 
     return res.status(200).json({
@@ -189,11 +194,14 @@ export const oauthGoogle = async (req, res) => {
     }
 
     const session = await createSession(account.id)
+    
+    // Set session cookie
     res.cookie('sessionId', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (matches session expiration)
+      path: '/',
     })
 
     return res.status(200).json({
@@ -215,11 +223,12 @@ export const logout = async (req, res) => {
       await deleteSession(token)
     }
 
-    // Clear the cookie
+    // Clear the cookie with matching options
     res.clearCookie('sessionId', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: '/',
     })
 
     return res.status(200).json({

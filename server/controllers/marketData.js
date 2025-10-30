@@ -20,13 +20,14 @@ export const getLatestQuotes = async (req, res) => {
         }
 
         const data = await response.json();
-        const results = {};
+        const results = [];
 
         symbols.forEach(symbol => {
             const cryptoData = data.data[symbol];
             if (cryptoData?.quote?.USD) {
                 const usdQuote = cryptoData.quote.USD;
-                results[symbol] = {
+                results.push({
+                    symbol: symbol,
                     price: usdQuote.price,
                     changePercent: usdQuote.percent_change_24h,
                     volume24h: usdQuote.volume_24h,
@@ -34,11 +35,11 @@ export const getLatestQuotes = async (req, res) => {
                     high24h: usdQuote.price * 1.02,
                     low24h: usdQuote.price * 0.98,
                     open24h: usdQuote.price * (1 - (usdQuote.percent_change_24h / 100))
-                };
+                });
             }
         });
 
-        res.json(results);
+        res.json({ success: true, data: results });
     } catch (error) {
         console.error('Error in getLatestQuotes:', error);
         res.status(500).json({ error: error.message });

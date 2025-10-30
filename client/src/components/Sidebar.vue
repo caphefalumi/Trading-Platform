@@ -44,17 +44,18 @@ const navigate = (name) => {
 </script>
 <style scoped>
 .sidebar {
-  background-color: var(--card-bg);
+  background: linear-gradient(180deg, #1a1d29 0%, #0f1117 100%);
   padding: 20px;
   overflow-y: auto;
   min-width: 280px;
   height: 100vh;
-  color: var(--text-color-faded);
+  color: #9ca3af;
   transition: all 0.3s ease;
+  border-right: 1px solid #2d3142;
 }
 .user-avatar {
   font-size: 30px !important;
-  color: var(--green-color) !important;
+  color: #10b981 !important;
   margin-left: 2%;
 }
 .user-avatar:hover {
@@ -62,9 +63,12 @@ const navigate = (name) => {
 }
 .menu h2 {
   margin-top: 24px;
-  margin-bottom: 8px;
-  font-size: 1rem;
-  font-weight: bold;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .menu ul {
   list-style: none;
@@ -72,28 +76,44 @@ const navigate = (name) => {
   margin-bottom: 16px;
 }
 .menu li {
-  padding: 8px 0;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  color: #9ca3af;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
+
+.menu li:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #e5e7eb;
+}
+
 .menu li.active {
-  font-weight: bold;
-  color: var(--accent-color);
+  font-weight: 600;
+  color: #e5e7eb;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
+  border-left: 3px solid #3b82f6;
+  padding-left: 9px;
 }
 .menu .mdi {
-  margin-right: 8px;
+  margin-right: 12px;
+  font-size: 1.25rem;
 }
 .menu .tag.new {
-  background: #2ecc40;
+  background: #10b981;
   color: #fff;
   border-radius: 8px;
   padding: 2px 8px;
   font-size: 0.75rem;
   margin-left: 8px;
+  font-weight: 600;
 }
 .menu .indicator.red {
-  background: #e74c3c;
+  background: #ef4444;
   border-radius: 50%;
   width: 8px;
   height: 8px;

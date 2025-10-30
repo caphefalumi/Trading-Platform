@@ -37,10 +37,10 @@ if (process.env.NODE_ENV !== 'test') {
     .then(() => {
       httpServer.listen(PORT, () => {
         console.log(`Server listening on port ${PORT}`)
-        
+
         // Initialize WebSocket service
         websocketService.initialize(httpServer)
-        
+
         // Start market data agent
         marketDataAgent.start()
       })

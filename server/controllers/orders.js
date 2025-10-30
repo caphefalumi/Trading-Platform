@@ -371,7 +371,7 @@ export const placeOrder = async (req, res) => {
       const [account, instrument] = await Promise.all([
         tx.account.findUnique({
           where: { id: accountId },
-          include: { 
+          include: {
             balances: {
               include: {
                 currency: true
@@ -379,7 +379,7 @@ export const placeOrder = async (req, res) => {
             }
           },
         }),
-        tx.instrument.findUnique({ 
+        tx.instrument.findUnique({
           where: { id: instrumentId },
           include: { currency: true }
         }),
@@ -395,7 +395,7 @@ export const placeOrder = async (req, res) => {
 
       // Get or create account balance for the instrument's currency
       let accountBalance = account.balances.find(b => b.currencyId === instrument.currencyId)
-      
+
       if (!accountBalance) {
         accountBalance = await tx.accountBalance.create({
           data: {
@@ -450,7 +450,7 @@ export const placeOrder = async (req, res) => {
       // Balance checking for BUY orders
       if (sideCode === ORDER_SIDES.BUY) {
         const available = toDecimal(accountBalance.available)
-        
+
         if (typeCode === ORDER_TYPES.LIMIT) {
           // For limit orders, reserve the full amount
           const reserve = priceDecimal.mul(qtyDecimal)
@@ -582,10 +582,10 @@ export const placeOrder = async (req, res) => {
 export const listAccountOrders = async (req, res) => {
   const { accountId } = req.params
   const { status, instrumentId, startDate, endDate, limit = 100 } = req.query
-  
+
   try {
     const where = { accountId }
-    
+
     // Add optional filters
     if (status) {
       const statusRecord = await prisma.orderStatus.findUnique({ where: { code: status.toUpperCase() } })
@@ -593,17 +593,17 @@ export const listAccountOrders = async (req, res) => {
         where.statusId = statusRecord.id
       }
     }
-    
+
     if (instrumentId) {
       where.instrumentId = instrumentId
     }
-    
+
     if (startDate || endDate) {
       where.createdAt = {}
       if (startDate) where.createdAt.gte = new Date(startDate)
       if (endDate) where.createdAt.lte = new Date(endDate)
     }
-    
+
     const orders = await prisma.order.findMany({
       where,
       include: {
@@ -623,7 +623,7 @@ export const listAccountOrders = async (req, res) => {
       orderBy: { createdAt: 'desc' },
       take: parseInt(limit),
     })
-    
+
     // Format the response
     const formattedOrders = orders.map(order => ({
       id: order.id,
@@ -645,7 +645,7 @@ export const listAccountOrders = async (req, res) => {
         executedAt: exec.executedAt,
       })),
     }))
-    
+
     res.json(formattedOrders)
   } catch (error) {
     console.error('List orders error:', error)

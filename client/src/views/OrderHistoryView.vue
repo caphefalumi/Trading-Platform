@@ -14,7 +14,7 @@
           <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
-      
+
       <div class="filter-group">
         <label>Instrument</label>
         <select v-model="filters.instrumentId" @change="loadOrders">
@@ -71,15 +71,15 @@
               </span>
             </td>
             <td class="actions">
-              <button 
-                v-if="canCancel(order)" 
+              <button
+                v-if="canCancel(order)"
                 @click="cancelOrder(order)"
                 class="btn-cancel"
                 :disabled="cancelling[order.id]"
               >
                 {{ cancelling[order.id] ? 'Cancelling...' : 'Cancel' }}
               </button>
-              <button 
+              <button
                 v-if="order.executions && order.executions.length > 0"
                 @click="toggleExecutions(order.id)"
                 class="btn-details"
@@ -269,19 +269,23 @@ onMounted(() => {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  background: #0f1117;
+  min-height: 100vh;
 }
 
 h1 {
   margin-bottom: 24px;
-  color: var(--text-primary, #fff);
+  color: #e5e7eb;
+  font-weight: 700;
 }
 
 .card {
-  background: var(--card-bg, #1a1a2e);
+  background: linear-gradient(135deg, #1e2139 0%, #1a1d29 100%);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid #2d3142;
 }
 
 .filters {
@@ -299,33 +303,44 @@ h1 {
 
 .filter-group label {
   font-size: 0.875rem;
-  color: var(--text-secondary, #aaa);
+  color: #9ca3af;
+  font-weight: 600;
 }
 
 .filter-group select {
   padding: 8px 12px;
-  border: 1px solid var(--border-color, #333);
+  border: 2px solid #2d3142;
   border-radius: 6px;
-  background: var(--bg-secondary, #16213e);
-  color: var(--text-primary, #fff);
+  background: rgba(15, 17, 23, 0.6);
+  color: #e5e7eb;
   min-width: 150px;
+  transition: all 0.2s ease;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(15, 17, 23, 0.8);
 }
 
 .btn-refresh {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
-  background: #2196F3;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  font-weight: 600;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .btn-refresh:hover {
-  background: #0b7dda;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .icon {
@@ -335,7 +350,7 @@ h1 {
 .loading, .empty-state {
   text-align: center;
   padding: 48px;
-  color: var(--text-secondary, #aaa);
+  color: #9ca3af;
 }
 
 .orders-table {
@@ -347,28 +362,37 @@ h1 {
 .orders-table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color, #333);
+  border-bottom: 1px solid #2d3142;
+}
+
+.orders-table thead {
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .orders-table th {
-  color: var(--text-secondary, #aaa);
-  font-weight: 500;
+  color: #9ca3af;
+  font-weight: 600;
   font-size: 0.875rem;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .orders-table td {
-  color: var(--text-primary, #fff);
+  color: #e5e7eb;
+}
+
+.orders-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.05);
 }
 
 .time {
   font-size: 0.875rem;
-  color: var(--text-secondary, #aaa);
+  color: #9ca3af;
 }
 
 .symbol {
   font-weight: 600;
-  color: #2196F3;
+  color: #3b82f6;
 }
 
 .side {
@@ -377,11 +401,11 @@ h1 {
 }
 
 .side.buy {
-  color: #4CAF50;
+  color: #10b981;
 }
 
 .side.sell {
-  color: #f44336;
+  color: #ef4444;
 }
 
 .price {
@@ -392,36 +416,40 @@ h1 {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
 .status-open {
-  background: rgba(33, 150, 243, 0.2);
-  color: #2196F3;
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .status-partial {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 .status-filled {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .status-cancelled {
-  background: rgba(158, 158, 158, 0.2);
-  color: #9E9E9E;
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(156, 163, 175, 0.3);
 }
 
 .filled-partial {
-  color: #FFC107;
+  color: #fbbf24;
 }
 
 .filled-complete {
-  color: #4CAF50;
+  color: #10b981;
 }
 
 .order-cancelled {
@@ -440,34 +468,39 @@ h1 {
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
+  font-weight: 600;
 }
 
 .btn-cancel {
-  background: #f44336;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .btn-cancel:hover:not(:disabled) {
-  background: #da190b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
 }
 
 .btn-cancel:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .btn-details {
   background: transparent;
-  border: 1px solid var(--border-color, #333);
-  color: var(--text-primary, #fff);
+  border: 1px solid #2d3142;
+  color: #e5e7eb;
 }
 
 .btn-details:hover {
-  background: var(--bg-secondary, #16213e);
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .executions-row {
-  background: var(--bg-secondary, #16213e);
+  background: rgba(15, 17, 23, 0.6);
 }
 
 .executions-detail {
@@ -476,22 +509,26 @@ h1 {
 
 .executions-detail h4 {
   margin: 0 0 12px 0;
-  color: var(--text-primary, #fff);
+  color: #e5e7eb;
 }
 
 .executions-table {
   width: 100%;
   font-size: 0.875rem;
+  border-collapse: collapse;
 }
 
 .executions-table th {
-  color: var(--text-secondary, #aaa);
+  color: #9ca3af;
   padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #2d3142;
 }
 
 .executions-table td {
   padding: 8px;
-  color: var(--text-primary, #fff);
+  color: #e5e7eb;
+  border-bottom: 1px solid #2d3142;
 }
 
 .feedback-toast {
@@ -507,13 +544,15 @@ h1 {
 }
 
 .feedback-toast.success {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .feedback-toast.error {
-  background: #f44336;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 @keyframes slideIn {

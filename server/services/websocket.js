@@ -3,7 +3,7 @@ import marketDataAgent from './marketDataAgent.js'
 
 /**
  * WebSocket Service using Socket.IO
- * 
+ *
  * Provides real-time updates for:
  * - Market data (price updates)
  * - Order updates (status changes, fills)
@@ -89,7 +89,7 @@ class WebSocketService {
     this.marketDataInterval = setInterval(async () => {
       try {
         const quotes = await marketDataAgent.getLatestQuotes()
-        
+
         // Broadcast to all connected clients
         this.io.emit('marketData:update', quotes)
 

@@ -12,13 +12,13 @@ class WebSocketClient {
     this.isConnected = false
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 5
-    
+
     // Reactive state for market data
     this.marketData = reactive({
       quotes: [],
       lastUpdate: null,
     })
-    
+
     // Event handlers storage
     this.handlers = {
       marketData: [],
@@ -39,7 +39,7 @@ class WebSocketClient {
     }
 
     const serverUrl = import.meta.env.VITE_WS_URL || 'http://localhost:3001'
-    
+
     this.socket = io(serverUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -60,7 +60,7 @@ class WebSocketClient {
       this.isConnected = true
       this.reconnectAttempts = 0
       console.log('✅ WebSocket connected:', this.socket.id)
-      
+
       // Request initial market data snapshot
       this.socket.emit('request:marketData')
     })
@@ -130,7 +130,7 @@ class WebSocketClient {
       console.warn('Cannot subscribe: WebSocket not connected')
       return
     }
-    
+
     this.socket.emit('subscribe:instrument', instrumentId)
     console.log(`📊 Subscribed to instrument: ${instrumentId}`)
   }
@@ -140,7 +140,7 @@ class WebSocketClient {
    */
   unsubscribeFromInstrument(instrumentId) {
     if (!this.socket?.connected) return
-    
+
     this.socket.emit('unsubscribe:instrument', instrumentId)
     console.log(`Unsubscribed from instrument: ${instrumentId}`)
   }
@@ -153,7 +153,7 @@ class WebSocketClient {
       console.warn('Cannot subscribe: WebSocket not connected')
       return
     }
-    
+
     this.socket.emit('subscribe:account', accountId)
     console.log(`👤 Subscribed to account: ${accountId}`)
   }
@@ -163,7 +163,7 @@ class WebSocketClient {
    */
   unsubscribeFromAccount(accountId) {
     if (!this.socket?.connected) return
-    
+
     this.socket.emit('unsubscribe:account', accountId)
     console.log(`Unsubscribed from account: ${accountId}`)
   }
@@ -173,7 +173,7 @@ class WebSocketClient {
    */
   onMarketData(handler) {
     this.handlers.marketData.push(handler)
-    
+
     // Return unsubscribe function
     return () => {
       const index = this.handlers.marketData.indexOf(handler)
@@ -188,7 +188,7 @@ class WebSocketClient {
    */
   onOrderUpdate(handler) {
     this.handlers.orderUpdate.push(handler)
-    
+
     return () => {
       const index = this.handlers.orderUpdate.indexOf(handler)
       if (index > -1) {
@@ -202,7 +202,7 @@ class WebSocketClient {
    */
   onExecution(handler) {
     this.handlers.execution.push(handler)
-    
+
     return () => {
       const index = this.handlers.execution.indexOf(handler)
       if (index > -1) {
@@ -216,7 +216,7 @@ class WebSocketClient {
    */
   onBalanceUpdate(handler) {
     this.handlers.balanceUpdate.push(handler)
-    
+
     return () => {
       const index = this.handlers.balanceUpdate.indexOf(handler)
       if (index > -1) {
@@ -230,7 +230,7 @@ class WebSocketClient {
    */
   onOrderBookUpdate(handler) {
     this.handlers.orderBook.push(handler)
-    
+
     return () => {
       const index = this.handlers.orderBook.indexOf(handler)
       if (index > -1) {
@@ -263,3 +263,4 @@ class WebSocketClient {
 const websocketClient = new WebSocketClient()
 
 export default websocketClient
+export { websocketClient }

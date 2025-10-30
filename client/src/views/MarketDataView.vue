@@ -118,10 +118,11 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { websocketClient } from '../utils/websocket'
 import { api } from '../utils/api'
 import * as echarts from 'echarts'
+import marketDataService from '../services/marketData'
 
 const marketData = ref([])
 const unsubscribeMarketData = ref(null)
-const isConnected = computed(() => websocketClient.connected.value)
+const isConnected = computed(() => websocketClient.isConnected || false)
 
 // Chart variables
 const mainCandlestickChart = ref(null)
@@ -220,31 +221,32 @@ const getDaysFromPeriod = (period) => {
 const renderCandlestickChart = async (symbol) => {
   loadingChart.value = true
   try {
-    // Fetch real historical data from CoinGecko
-    const coinId = symbol === 'BTC' ? 'bitcoin' : 'ethereum'
-    const days = getDaysFromPeriod(selectedTimePeriod.value)
-    
+    // Fetch real historical data from backend market data service
     let chartData = []
     try {
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`
-      )
-      const ohlcData = await response.json()
-      
-      // Convert CoinGecko OHLC data to chart format
-      chartData = ohlcData.map(item => {
-        const date = new Date(item[0])
-        return [
-          date.toLocaleDateString(),
-          item[1], // open
-          item[4], // close
-          item[2], // high
-          item[3], // low
-          Math.random() * 1000000 + 500000 // volume
-        ]
-      })
+      // Use the market data service to get candle data
+      const candleData = await marketDataService.getCandleData(symbol, selectedTimePeriod.value)
+
+      if (candleData && candleData.length > 0) {
+        // Convert backend candle data to chart format
+        chartData = candleData.map(item => {
+          const date = new Date(item.timestamp || item.time)
+          return [
+            date.toLocaleDateString(),
+            item.open,
+            item.close,
+            item.high,
+            item.low,
+            item.volume || Math.random() * 1000000 + 500000
+          ]
+        })
+      } else {
+        // Fallback: Use mock data if no data returned
+        console.warn('No candle data returned from service, using mock data')
+        chartData = generateMockCandleData(100)
+      }
     } catch (error) {
-      console.error('Failed to fetch chart data:', error)
+      console.error('Failed to fetch chart data from service:', error)
       // Fallback: Use mock data if API fails
       chartData = generateMockCandleData(100)
     }
@@ -314,7 +316,7 @@ const renderCandlestickChart = async (symbol) => {
           const change = values[1] - values[0]
           const changePercent = ((change / values[0]) * 100).toFixed(2)
           const color = change >= 0 ? '#10b981' : '#ef4444'
-          
+
           // Update the info header when hovering
           const candleData = chartData[data.dataIndex]
           if (candleData) {
@@ -329,7 +331,7 @@ const renderCandlestickChart = async (symbol) => {
               changePercent: ((candleData[2] - candleData[1]) / candleData[1]) * 100
             }
           }
-          
+
           return `
             <div style="padding: 8px;">
               <div style="font-weight: bold; margin-bottom: 8px;">${data.name}</div>
@@ -345,7 +347,7 @@ const renderCandlestickChart = async (symbol) => {
     }
 
     echartsInstance.setOption(option, true)
-    
+
     // Listen for chart events to update info header
     echartsInstance.on('mouseover', (params) => {
       if (params.componentType === 'series' && params.seriesType === 'candlestick') {
@@ -364,7 +366,7 @@ const renderCandlestickChart = async (symbol) => {
         }
       }
     })
-    
+
     // Reset to latest candle on mouse leave
     echartsInstance.on('globalout', () => {
       const lastCandle = chartData[chartData.length - 1]
@@ -420,12 +422,42 @@ const generateMockCandleData = (count) => {
 // Load initial market data from API
 const loadMarketData = async () => {
   try {
-    const response = await api.get('/market-data/prices')
+    const response = await api.get('/api/marketdata/quotes?symbols=BTC,ETH,USDT,BNB,XRP,ADA,SOL,DOT,DOGE,MATIC')
     if (response.data.success && response.data.data) {
       marketData.value = response.data.data
     }
   } catch (error) {
     console.error('Failed to load market data:', error)
+  }
+}
+
+// Update current prices for chart using market data service
+const updateChartPrices = async () => {
+  try {
+    const quotes = await marketDataService.getLatestQuotes(['BTC', 'ETH'])
+
+    // Update current candle info if we have the selected symbol's quote
+    if (quotes[selectedCandlestickChartTab.value] && currentCandleInfo.value) {
+      const quote = quotes[selectedCandlestickChartTab.value]
+
+      // Update with real-time price data
+      if (quote.price) {
+        currentCandleInfo.value.close = quote.price
+        currentCandleInfo.value.change = quote.change24h || 0
+        currentCandleInfo.value.changePercent = quote.changePercent24h || 0
+        currentCandleInfo.value.volume = quote.volume24h || currentCandleInfo.value.volume
+
+        // Update high/low if current price exceeds them
+        if (quote.price > currentCandleInfo.value.high) {
+          currentCandleInfo.value.high = quote.price
+        }
+        if (quote.price < currentCandleInfo.value.low) {
+          currentCandleInfo.value.low = quote.price
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update chart prices:', error)
   }
 }
 
@@ -436,6 +468,12 @@ onMounted(async () => {
   // Initialize chart after DOM is ready
   await nextTick()
   await renderCandlestickChart(selectedCandlestickChartTab.value)
+
+  // Update chart prices from market data service
+  await updateChartPrices()
+
+  // Update chart prices periodically (every 30 seconds)
+  const priceUpdateInterval = setInterval(updateChartPrices, 30000)
 
   // Handle window resize for chart
   const handleResize = () => {
@@ -459,11 +497,9 @@ onMounted(async () => {
         marketData.value.push(data)
       }
     }
-  })
 
-  // Cleanup on unmount
-  onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
+    // Update chart with latest price data
+    updateChartPrices()
   })
 })
 
@@ -472,6 +508,14 @@ onUnmounted(() => {
   if (echartsInstance) {
     echartsInstance.dispose()
     echartsInstance = null
+  }
+
+  // Clean up resize listener
+  window.removeEventListener('resize', handleResize)
+
+  // Clear interval
+  if (priceUpdateInterval) {
+    clearInterval(priceUpdateInterval)
   }
 
   // Clean up WebSocket subscriptions

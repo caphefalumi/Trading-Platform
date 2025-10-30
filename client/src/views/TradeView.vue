@@ -253,7 +253,7 @@ const tifOptions = [
   { value: 5, title: 'FOK (Fill or Kill)' }
 ]
 
-const isConnected = computed(() => websocketClient.connected.value)
+const isConnected = computed(() => websocketClient.isConnected || false)
 
 const selectedInstrument = computed(() => {
   if (!form.value.instrumentId) return null
@@ -363,7 +363,7 @@ const handleSubmit = async () => {
 // Load instruments
 const loadInstruments = async () => {
   try {
-    const response = await api.get('/instruments')
+    const response = await api.get('/api/instruments')
     instruments.value = response.data
   } catch (error) {
     console.error('Failed to load instruments:', error)
@@ -373,12 +373,12 @@ const loadInstruments = async () => {
 // Load market data
 const loadMarketData = async () => {
   try {
-    const response = await api.get('/market-data/prices')
+    const response = await api.get('/api/marketdata/quotes?symbols=BTC,ETH,USDT,BNB,XRP,ADA,SOL,DOT,DOGE,MATIC')
     if (response.data.success && response.data.data) {
-      // Convert array to map by instrumentId
+      // Convert array to map by symbol
       const dataMap = {}
       response.data.data.forEach(item => {
-        dataMap[item.instrumentId] = item
+        dataMap[item.symbol] = item
       })
       marketData.value = dataMap
     }

@@ -161,7 +161,7 @@ export const depositFunds = async (req, res) => {
       // Get or create account balance for this currency
       let balance = await tx.accountBalance.findUnique({
         where: {
-          account_balance_unique: {
+          accountId_currencyId: {
             accountId,
             currencyId,
           },
@@ -261,7 +261,7 @@ export const withdrawFunds = async (req, res) => {
       // Get account balance for this currency
       const balance = await tx.accountBalance.findUnique({
         where: {
-          account_balance_unique: {
+          accountId_currencyId: {
             accountId,
             currencyId,
           },
@@ -360,7 +360,7 @@ export const demoCreditFunds = async (req, res) => {
       // Get or create account balance for this currency
       let balance = await tx.accountBalance.findUnique({
         where: {
-          account_balance_unique: {
+          accountId_currencyId: {
             accountId,
             currencyId,
           },

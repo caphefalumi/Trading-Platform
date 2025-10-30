@@ -77,6 +77,14 @@
     <!-- Account Balance Section -->
     <div class="balance-section card">
       <h2>Account Balance</h2>
+      
+      <!-- Total Account Value -->
+      <div v-if="!loading && totalAccountValue > 0" class="total-account-value">
+        <div class="total-label">Total Account Value</div>
+        <div class="total-amount">${{ formatNumber(totalAccountValue, 2) }}</div>
+        <div class="total-subtext">Based on current market prices</div>
+      </div>
+
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="balances.length === 0" class="empty-state">
         <p>No balances found. Click below to add demo funds.</p>
@@ -84,11 +92,24 @@
       </div>
       <div v-else class="balances-grid">
         <div v-for="balance in balances" :key="balance.currency" class="balance-item">
-          <div class="currency-label">{{ balance.currency }}</div>
-          <div class="balance-amount">{{ formatNumber(balance.total) }}</div>
+          <div class="currency-header">
+            <div class="currency-icon-wrapper">
+              <span v-if="balance.currency === 'BTC'" class="mdi mdi-bitcoin currency-icon btc-icon"></span>
+              <span v-else-if="balance.currency === 'ETH'" class="mdi mdi-ethereum currency-icon eth-icon"></span>
+              <span v-else class="mdi mdi-currency-usd currency-icon usdt-icon"></span>
+            </div>
+            <div class="currency-info">
+              <div class="currency-label">{{ getCurrencyName(balance.currency) }}</div>
+              <div class="currency-code">{{ balance.currency }}</div>
+            </div>
+          </div>
+          <div class="balance-amount">{{ formatNumber(balance.total, 8) }} {{ balance.currency }}</div>
+          <div class="balance-usd-value" v-if="getUSDValue(balance.currency, balance.total) > 0">
+            ≈ ${{ formatNumber(getUSDValue(balance.currency, balance.total), 2) }} USD
+          </div>
           <div class="balance-details">
-            <span>Available: {{ formatNumber(balance.available) }}</span>
-            <span>Reserved: {{ formatNumber(balance.reserved) }}</span>
+            <span>Available: {{ formatNumber(balance.available, 8) }}</span>
+            <span>Reserved: {{ formatNumber(balance.reserved, 8) }}</span>
           </div>
         </div>
       </div>
@@ -222,6 +243,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { sessionState } from '../stores/session'
 import apiClient from '../utils/api'
 import websocketClient from '../utils/websocket'
+import marketDataService from '../services/marketData'
 import * as echarts from 'echarts'
 
 const loading = ref(false)
@@ -230,6 +252,12 @@ const loadingChart = ref(false)
 const balances = ref([])
 const portfolio = ref([])
 const portfolioSummary = ref(null)
+const totalAccountValue = ref(0)
+const cryptoPrices = ref({
+  BTC: 0,
+  ETH: 0,
+  USDT: 1 // USDT is pegged to USD
+})
 const marketInsights = ref([
   { symbol: 'BTC/USD', price: 0, changePercent: 0 },
   { symbol: 'ETH/USD', price: 0, changePercent: 0 },
@@ -257,6 +285,9 @@ const timePeriods = [
 let unsubscribeBalance = null
 let unsubscribeOrder = null
 let unsubscribeExecution = null
+
+// Chart price update interval
+let priceUpdateInterval = null
 
 const showDeposit = ref(false)
 const showWithdraw = ref(false)
@@ -298,13 +329,43 @@ const getPnLClass = (position) => {
   return ''
 }
 
+const getCurrencyName = (code) => {
+  const names = {
+    BTC: 'Bitcoin',
+    ETH: 'Ethereum',
+    USDT: 'Tether USD'
+  }
+  return names[code] || code
+}
+
+const getUSDValue = (currency, amount) => {
+  const price = cryptoPrices.value[currency] || 0
+  return price * parseFloat(amount || 0)
+}
+
+const calculateTotalAccountValue = () => {
+  let total = 0
+  balances.value.forEach(balance => {
+    const usdValue = getUSDValue(balance.currency, balance.total)
+    total += usdValue
+  })
+  totalAccountValue.value = total
+}
+
 const loadBalance = async () => {
   if (!sessionState.account?.id) return
 
   loading.value = true
   try {
-    const response = await apiClient.get(`/accounts/${sessionState.account.id}/balance`)
+    // Load balances
+    const response = await apiClient.get(`/api/accounts/${sessionState.account.id}/balance`)
     balances.value = response.data.balances || []
+    
+    // Fetch latest crypto prices
+    await fetchCryptoPrices()
+    
+    // Calculate total account value
+    calculateTotalAccountValue()
   } catch (error) {
     console.error('Failed to load balance:', error)
     balances.value = []
@@ -313,25 +374,54 @@ const loadBalance = async () => {
   }
 }
 
-const loadMarketInsights = async () => {
+const fetchCryptoPrices = async () => {
   try {
-    const response = await apiClient.get('/market-data/prices')
+    const response = await apiClient.get('/api/marketdata/quotes?symbols=BTC,ETH')
     if (response.data.success && response.data.data) {
       const prices = response.data.data
+      prices.forEach(priceData => {
+        if (priceData.symbol === 'BTC' || priceData.symbol === 'ETH') {
+          cryptoPrices.value[priceData.symbol] = parseFloat(priceData.price)
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Failed to fetch crypto prices:', error)
+  }
+}
+
+const loadMarketInsights = async () => {
+  try {
+    const response = await apiClient.get('/api/marketdata/quotes?symbols=BTC,ETH')
+    console.log('Market insights response:', response.data)
+    if (response.data.success && response.data.data) {
+      const prices = response.data.data
+      console.log('Prices data:', prices)
+      
+      // Update market insights
       marketInsights.value = marketInsights.value.map(insight => {
-        const priceData = prices.find(p => p.symbol === insight.symbol.split('/')[0] + '/USD')
+        const symbolKey = insight.symbol.split('/')[0] // 'BTC' or 'ETH'
+        const priceData = prices.find(p => p.symbol === symbolKey)
+        console.log(`Looking for ${symbolKey}, found:`, priceData)
         if (priceData) {
+          // Also update crypto prices for balance calculation
+          cryptoPrices.value[symbolKey] = parseFloat(priceData.price)
           return {
             symbol: insight.symbol,
             price: parseFloat(priceData.price),
-            changePercent: parseFloat(priceData.change24h || 0)
+            changePercent: parseFloat(priceData.changePercent || 0)
           }
         }
         return insight
       })
+      console.log('Updated market insights:', marketInsights.value)
+      
+      // Recalculate total account value with updated prices
+      calculateTotalAccountValue()
     }
   } catch (error) {
     console.error('Failed to load market insights:', error)
+    console.error('Error details:', error.response?.data)
   }
 }
 
@@ -349,34 +439,21 @@ const changeTimePeriod = async (period) => {
 const renderCandlestickChart = async (symbol) => {
   loadingChart.value = true
   try {
-    // Fetch real historical data from CoinGecko
-    const coinId = symbol === 'BTC' ? 'bitcoin' : 'ethereum'
-    const days = getDaysFromPeriod(selectedTimePeriod.value)
+    // Fetch real historical data from backend marketData service
+    const candleData = await marketDataService.getCandleData(symbol, selectedTimePeriod.value)
 
-    let chartData = []
-    try {
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`
-      )
-      const ohlcData = await response.json()
-
-      // Convert CoinGecko OHLC data to chart format
-      // CoinGecko returns: [timestamp, open, high, low, close]
-      chartData = ohlcData.map(item => {
-        const date = new Date(item[0])
-        return [
-          date.toLocaleDateString(),
-          item[1], // open
-          item[4], // close
-          item[2], // high
-          item[3], // low
-          Math.random() * 1000000 + 500000 // volume (CoinGecko free tier doesn't provide volume in OHLC)
-        ]
-      })
-    } catch (error) {
-      console.error('Failed to fetch chart data, using mock data:', error)
-      chartData = generateMockCandleData(100)
-    }
+    // Convert backend candle data to chart format
+    const chartData = candleData.map(candle => {
+      const date = new Date(candle.timestamp)
+      return [
+        date.toLocaleDateString(),
+        candle.open,
+        candle.close,
+        candle.high,
+        candle.low,
+        candle.volume
+      ]
+    })
 
     if (!mainCandlestickChart.value) return
 
@@ -557,12 +634,40 @@ const generateMockCandleData = (count) => {
   return data
 }
 
+// Update current prices for chart using market data service
+const updateChartPrices = async () => {
+  try {
+    const quotes = await marketDataService.getLatestQuotes(['BTC', 'ETH'])
+    if (quotes && quotes.length > 0) {
+      const currentSymbol = selectedCandlestickChartTab.value
+      const quote = quotes.find(q => q.symbol === currentSymbol)
+
+      if (quote && currentCandleInfo.value) {
+        currentCandleInfo.value.close = quote.price
+        currentCandleInfo.value.change = quote.price - currentCandleInfo.value.open
+        currentCandleInfo.value.changePercent = quote.changePercent
+        currentCandleInfo.value.volume = quote.volume24h || currentCandleInfo.value.volume
+
+        // Update high/low if current price exceeds them
+        if (quote.price > currentCandleInfo.value.high) {
+          currentCandleInfo.value.high = quote.price
+        }
+        if (quote.price < currentCandleInfo.value.low) {
+          currentCandleInfo.value.low = quote.price
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update chart prices:', error)
+  }
+}
+
 const loadPortfolio = async () => {
   if (!sessionState.account?.id) return
 
   loadingPortfolio.value = true
   try {
-    const response = await apiClient.get(`/accounts/${sessionState.account.id}/summary`)
+    const response = await apiClient.get(`/api/accounts/${sessionState.account.id}/summary`)
     portfolio.value = response.data.portfolio || []
     portfolioSummary.value = response.data.totals || null
 
@@ -646,7 +751,7 @@ const handleDemoCredit = async () => {
   submitting.value = true
 
   try {
-    await apiClient.post(`/accounts/${sessionState.account.id}/demo-credit`, {
+    await apiClient.post(`/api/accounts/${sessionState.account.id}/demo-credit`, {
       amount: demoCreditAmount.value,
       currencyCode: demoCreditCurrency.value
     })
@@ -677,6 +782,11 @@ onMounted(async () => {
   await nextTick()
   await renderCandlestickChart(selectedCandlestickChartTab.value)
 
+  // Set up price update interval (every 30 seconds)
+  priceUpdateInterval = setInterval(() => {
+    updateChartPrices()
+  }, 30000)
+
   // Handle window resize
   const handleResize = () => {
     if (echartsInstance) {
@@ -705,9 +815,9 @@ onMounted(async () => {
     loadPortfolio()
   })
 
-  // Clean up resize listener on unmount
-  onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
+  // Subscribe to market data updates via WebSocket
+  websocketClient.onMarketData((data) => {
+    updateChartPrices()
   })
 })
 
@@ -716,6 +826,14 @@ onUnmounted(() => {
   if (echartsInstance) {
     echartsInstance.dispose()
     echartsInstance = null
+  }
+
+  // Clean up resize listener
+  window.removeEventListener('resize', handleResize)
+
+  // Clear price update interval
+  if (priceUpdateInterval) {
+    clearInterval(priceUpdateInterval)
   }
 
   // Cleanup WebSocket subscriptions
@@ -882,20 +1000,20 @@ h2 {
 }
 
 .currency-label {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 12px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .balance-amount {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: white;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   position: relative;
   z-index: 1;
+  word-break: break-word;
 }
 
 .balance-details {
@@ -906,6 +1024,111 @@ h2 {
   color: rgba(255, 255, 255, 0.85);
   position: relative;
   z-index: 1;
+}
+
+/* Currency header with icons */
+.currency-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.currency-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.3s ease;
+}
+
+.balance-item:hover .currency-icon-wrapper {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.currency-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.btc-icon {
+  color: #f7931a;
+}
+
+.eth-icon {
+  color: #627eea;
+}
+
+.usdt-icon {
+  color: #26a17b;
+}
+
+.currency-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.currency-code {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.balance-usd-value {
+  font-size: 1.1rem;
+  color: rgba(16, 185, 129, 0.95);
+  font-weight: 600;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Total Account Value Section */
+.total-account-value {
+  text-align: center;
+  padding: 28px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.18) 100%);
+  border-radius: 16px;
+  border: 2px solid rgba(16, 185, 129, 0.35);
+  margin-bottom: 28px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.total-label {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.total-amount {
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: #10b981;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+  letter-spacing: -0.5px;
+}
+
+.total-subtext {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+  letter-spacing: 0.3px;
 }
 
 .balance-actions {

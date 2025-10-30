@@ -575,6 +575,13 @@ export const placeOrder = async (req, res) => {
 
     res.status(201).json(result)
   } catch (error) {
+    console.error('❌ Place Order Error:', {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+      accountId: req.body.accountId,
+      instrumentId: req.body.instrumentId,
+    })
     res.status(400).json({ error: error.message })
   }
 }

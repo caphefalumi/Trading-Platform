@@ -199,7 +199,7 @@ const toggleExecutions = (orderId) => {
 
 const loadInstruments = async () => {
   try {
-    const response = await apiClient.get('/instruments')
+    const response = await apiClient.get('/api/instruments')
     instruments.value = response.data
   } catch (error) {
     console.error('Failed to load instruments:', error)
@@ -216,7 +216,7 @@ const loadOrders = async () => {
     if (filters.instrumentId) params.instrumentId = filters.instrumentId
 
     const response = await apiClient.get(
-      `/orders/account/${sessionState.account.id}`,
+      `/api/orders/account/${sessionState.account.id}`,
       { params }
     )
     orders.value = response.data
@@ -235,7 +235,7 @@ const cancelOrder = async (order) => {
 
   cancelling[order.id] = true
   try {
-    await apiClient.delete(`/orders/${order.id}`, {
+    await apiClient.delete(`/api/orders/${order.id}`, {
       data: { accountId: sessionState.account.id }
     })
     showFeedback('Order cancelled successfully', 'success')

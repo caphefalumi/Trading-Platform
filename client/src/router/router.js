@@ -64,8 +64,17 @@ const router = createRouter({
   routes,
 })
 
+// Initialize session once on app startup
+let sessionInitialized = false
+
 // Validate session with server on protected routes
 router.beforeEach(async (to) => {
+  // Initialize session on first navigation if not already done
+  if (!sessionInitialized && !sessionState.isLoading) {
+    sessionInitialized = true
+    await initSession()
+  }
+
   // If route requires authentication
   if (to.meta.requiresAuth) {
     // Check with server if session is valid

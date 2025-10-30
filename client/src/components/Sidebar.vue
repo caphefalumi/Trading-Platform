@@ -3,30 +3,41 @@
     <nav class="menu">
       <h2>MENU</h2>
       <ul>
-        <li class="active" data-page="dashboard"><span class="mdi mdi-view-dashboard"></span> Dashboard</li>
-        <li><span class="mdi mdi-currency-usd"></span> Trade</li>
-        <li><span class="mdi mdi-chart-line"></span> Market update</li>
-        <li><span class="mdi mdi-calculator"></span> Income estimator</li>
-        <li><span class="mdi mdi-chart-bar"></span> Interactive chart</li>
-        <li><span class="mdi mdi-hand-coin"></span> Mutual funds</li>
-        <li><span class="mdi mdi-robot"></span> Vocer</li>
+        <li :class="{ active: $route.name === 'dashboard' }" @click="navigate('dashboard')">
+          <span class="mdi mdi-view-dashboard"></span> Dashboard
+        </li>
+        <li :class="{ active: $route.name === 'trade' }" @click="navigate('trade')">
+          <span class="mdi mdi-currency-usd"></span> Trade
+        </li>
+        <li :class="{ active: $route.name === 'market-data' }" @click="navigate('market-data')">
+          <span class="mdi mdi-chart-line"></span> Market Data
+        </li>
       </ul>
       <h2>ACCOUNT</h2>
       <ul>
-        <li><span class="mdi mdi-folder-open"></span> Portfolio</li>
-        <li><span class="mdi mdi-cog"></span> Settings <span class="indicator red"></span></li>
+        <li :class="{ active: $route.name === 'dashboard' }" @click="navigate('dashboard')">
+          <span class="mdi mdi-folder-open"></span> Portfolio
+        </li>
+        <li><span class="mdi mdi-cog"></span> Settings</li>
         <li><span class="mdi mdi-history"></span> History</li>
       </ul>
       <h2>EXTRA</h2>
       <ul>
-        <li id="news-item"><span class="mdi mdi-newspaper"></span> News <span class="tag new">new</span></li>
+        <li><span class="mdi mdi-newspaper"></span> News</li>
         <li><span class="mdi mdi-comment"></span> Feedback</li>
       </ul>
     </nav>
   </aside>
 </template>
 <script setup>
-// No script needed for static sidebar
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const $route = useRoute()
+
+const navigate = (name) => {
+  router.push({ name })
+}
 </script>
 <style scoped>
 .sidebar {

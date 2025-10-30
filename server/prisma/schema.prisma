@@ -12,7 +12,7 @@ model Currency {
   code         String           @unique
   name         String
   symbol       String
-  // accounts     AccountBalance[] // removed
+  balances     AccountBalance[]
   baseAccounts Account[]        @relation("AccountBaseCurrency")
   instruments  Instrument[]
 
@@ -93,10 +93,26 @@ model Account {
   positions      Position[]
   ledgerEntries  LedgerEntry[]
   transactions   Transaction[]
-  // balances       AccountBalance[] // removed
+  balances       AccountBalance[]
   sessions       Session[]
 
   @@map("accounts")
+}
+
+model AccountBalance {
+  id         String   @id @default(uuid())
+  accountId  String   @map("account_id")
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  currencyId String   @map("currency_id")
+  currency   Currency @relation(fields: [currencyId], references: [id])
+  available  Decimal  @default(0) @db.Decimal(18, 8)
+  reserved   Decimal  @default(0) @db.Decimal(18, 8)
+  total      Decimal  @default(0) @db.Decimal(18, 8)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([accountId, currencyId], map: "account_balance_unique")
+  @@map("account_balances")
 }
 
 model Session {

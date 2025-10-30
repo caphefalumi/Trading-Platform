@@ -18,6 +18,9 @@
         <li :class="{ active: $route.name === 'dashboard' }" @click="navigate('dashboard')">
           <span class="mdi mdi-folder-open"></span> Portfolio
         </li>
+        <li :class="{ active: $route.name === 'orders' }" @click="navigate('orders')">
+          <span class="mdi mdi-format-list-bulleted"></span> Orders
+        </li>
         <li><span class="mdi mdi-cog"></span> Settings</li>
         <li><span class="mdi mdi-history"></span> History</li>
       </ul>

@@ -146,15 +146,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { sessionState } from '../stores/session'
 import apiClient from '../utils/api'
+import websocketClient from '../utils/websocket'
 
 const loading = ref(false)
 const loadingPortfolio = ref(false)
 const balances = ref([])
 const portfolio = ref([])
 const portfolioSummary = ref(null)
+
+// WebSocket unsubscribe functions
+let unsubscribeBalance = null
+let unsubscribeOrder = null
+let unsubscribeExecution = null
 
 const showDeposit = ref(false)
 const showWithdraw = ref(false)
@@ -320,6 +326,33 @@ const handleDemoCredit = async () => {
 onMounted(() => {
   loadBalance()
   loadPortfolio()
+  
+  // Subscribe to real-time balance updates
+  unsubscribeBalance = websocketClient.onBalanceUpdate((data) => {
+    console.log('Balance update received in dashboard:', data)
+    loadBalance() // Reload balance when updated
+  })
+  
+  // Subscribe to order updates
+  unsubscribeOrder = websocketClient.onOrderUpdate((data) => {
+    console.log('Order update received in dashboard:', data)
+    loadPortfolio() // Reload portfolio when orders are filled
+  })
+  
+  // Subscribe to execution notifications
+  unsubscribeExecution = websocketClient.onExecution((data) => {
+    console.log('Execution received in dashboard:', data)
+    showFeedback(`Order executed: ${data.quantity} @ ${data.price}`, 'success')
+    loadBalance()
+    loadPortfolio()
+  })
+})
+
+onUnmounted(() => {
+  // Cleanup WebSocket subscriptions
+  if (unsubscribeBalance) unsubscribeBalance()
+  if (unsubscribeOrder) unsubscribeOrder()
+  if (unsubscribeExecution) unsubscribeExecution()
 })
 </script>
 

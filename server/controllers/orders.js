@@ -371,9 +371,18 @@ export const placeOrder = async (req, res) => {
       const [account, instrument] = await Promise.all([
         tx.account.findUnique({
           where: { id: accountId },
-          include: { balance: true },
+          include: { 
+            balances: {
+              include: {
+                currency: true
+              }
+            }
+          },
         }),
-        tx.instrument.findUnique({ where: { id: instrumentId } }),
+        tx.instrument.findUnique({ 
+          where: { id: instrumentId },
+          include: { currency: true }
+        }),
       ])
 
       if (!account) {
@@ -384,8 +393,19 @@ export const placeOrder = async (req, res) => {
         throw new Error('Instrument not found')
       }
 
-      if (account.currencyId !== instrument.currencyId) {
-        throw new Error('Account and instrument currencies do not match')
+      // Get or create account balance for the instrument's currency
+      let accountBalance = account.balances.find(b => b.currencyId === instrument.currencyId)
+      
+      if (!accountBalance) {
+        accountBalance = await tx.accountBalance.create({
+          data: {
+            accountId,
+            currencyId: instrument.currencyId,
+            available: 0,
+            reserved: 0,
+            total: 0,
+          },
+        })
       }
 
       const sideCode = side.toUpperCase()
@@ -427,25 +447,33 @@ export const placeOrder = async (req, res) => {
         }
       }
 
-      if (sideCode === ORDER_SIDES.BUY && typeCode === ORDER_TYPES.LIMIT) {
-        if (!account.balance) {
-          throw new Error('Account balance not found')
+      // Balance checking for BUY orders
+      if (sideCode === ORDER_SIDES.BUY) {
+        const available = toDecimal(accountBalance.available)
+        
+        if (typeCode === ORDER_TYPES.LIMIT) {
+          // For limit orders, reserve the full amount
+          const reserve = priceDecimal.mul(qtyDecimal)
+          if (available.lt(reserve)) {
+            throw new Error(`Insufficient available balance. Required: ${reserve.toString()}, Available: ${available.toString()}`)
+          }
+          const newAvailable = available.sub(reserve)
+          const newReserved = toDecimal(accountBalance.reserved).add(reserve)
+          await tx.accountBalance.update({
+            where: { id: accountBalance.id },
+            data: {
+              available: newAvailable,
+              reserved: newReserved,
+              total: newAvailable.add(newReserved),
+            },
+          })
+        } else if (typeCode === ORDER_TYPES.MARKET) {
+          // For market orders, we'll check funds during matching
+          // but ensure some balance exists
+          if (available.lte(0)) {
+            throw new Error('Insufficient balance for market order')
+          }
         }
-        const available = toDecimal(account.balance.available)
-        const reserve = priceDecimal.mul(qtyDecimal)
-        if (available.lt(reserve)) {
-          throw new Error('Insufficient available balance')
-        }
-        const newAvailable = available.sub(reserve)
-        const newReserved = toDecimal(account.balance.reserved).add(reserve)
-        await tx.accountBalance.update({
-          where: { accountId: accountId },
-          data: {
-            available: newAvailable,
-            reserved: newReserved,
-            total: newAvailable.add(newReserved),
-          },
-        })
       }
 
       if (sideCode === ORDER_SIDES.SELL) {
@@ -553,19 +581,74 @@ export const placeOrder = async (req, res) => {
 
 export const listAccountOrders = async (req, res) => {
   const { accountId } = req.params
+  const { status, instrumentId, startDate, endDate, limit = 100 } = req.query
+  
   try {
+    const where = { accountId }
+    
+    // Add optional filters
+    if (status) {
+      const statusRecord = await prisma.orderStatus.findUnique({ where: { code: status.toUpperCase() } })
+      if (statusRecord) {
+        where.statusId = statusRecord.id
+      }
+    }
+    
+    if (instrumentId) {
+      where.instrumentId = instrumentId
+    }
+    
+    if (startDate || endDate) {
+      where.createdAt = {}
+      if (startDate) where.createdAt.gte = new Date(startDate)
+      if (endDate) where.createdAt.lte = new Date(endDate)
+    }
+    
     const orders = await prisma.order.findMany({
-      where: { accountId },
+      where,
       include: {
         status: true,
         side: true,
         type: true,
         instrument: true,
+        executions: {
+          select: {
+            id: true,
+            price: true,
+            quantity: true,
+            executedAt: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
     })
-    res.json(orders)
+    
+    // Format the response
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      instrumentId: order.instrumentId,
+      symbol: order.instrument.symbol,
+      side: order.side.code,
+      type: order.type.code,
+      status: order.status.code,
+      price: order.price ? formatDecimal(order.price) : null,
+      quantity: formatDecimal(order.quantity),
+      filledQuantity: formatDecimal(order.filledQuantity),
+      remainingQuantity: formatDecimal(order.quantity) - formatDecimal(order.filledQuantity),
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      executions: order.executions.map(exec => ({
+        id: exec.id,
+        price: formatDecimal(exec.price),
+        quantity: formatDecimal(exec.quantity),
+        executedAt: exec.executedAt,
+      })),
+    }))
+    
+    res.json(formattedOrders)
   } catch (error) {
+    console.error('List orders error:', error)
     res.status(500).json({ error: error.message })
   }
 }
@@ -629,5 +712,113 @@ export const listAccountExecutions = async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch executions:', err)
     res.status(500).json({ error: err.message })
+  }
+}
+
+export const cancelOrder = async (req, res) => {
+  const { orderId } = req.params
+  const { accountId } = req.body
+
+  if (!orderId) {
+    return res.status(400).json({ error: 'Order ID is required' })
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Fetch the order with all necessary details
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          side: true,
+          type: true,
+          status: true,
+          instrument: true,
+        },
+      })
+
+      if (!order) {
+        throw new Error('Order not found')
+      }
+
+      // Verify ownership if accountId is provided
+      if (accountId && order.accountId !== accountId) {
+        throw new Error('Unauthorized: Order does not belong to this account')
+      }
+
+      // Check if order can be cancelled
+      if (order.status.code === ORDER_STATUSES.FILLED) {
+        throw new Error('Cannot cancel fully filled order')
+      }
+      if (order.status.code === ORDER_STATUSES.CANCELLED) {
+        throw new Error('Order already cancelled')
+      }
+
+      const remainingQty = toDecimal(order.quantity).sub(toDecimal(order.filledQuantity))
+
+      // If it's a limit buy order, release reserved funds
+      if (order.side.code === ORDER_SIDES.BUY && order.type.code === ORDER_TYPES.LIMIT && order.price) {
+        const price = toDecimal(order.price)
+        const reservedAmount = remainingQty.mul(price)
+
+        const balance = await tx.accountBalance.findUnique({
+          where: {
+            account_balance_unique: {
+              accountId: order.accountId,
+              currencyId: order.instrument.currencyId,
+            },
+          },
+        })
+
+        if (balance) {
+          const newReserved = toDecimal(balance.reserved).sub(reservedAmount)
+          const newAvailable = toDecimal(balance.available).add(reservedAmount)
+
+          await tx.accountBalance.update({
+            where: { id: balance.id },
+            data: {
+              reserved: newReserved.lt(0) ? new Prisma.Decimal(0) : newReserved,
+              available: newAvailable,
+              total: toDecimal(balance.total),
+            },
+          })
+        }
+      }
+
+      // Update order status to cancelled
+      const cancelledStatus = await tx.orderStatus.findUnique({
+        where: { code: ORDER_STATUSES.CANCELLED },
+      })
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          statusId: cancelledStatus.id,
+          updatedAt: new Date(),
+        },
+        include: {
+          status: true,
+          side: true,
+          type: true,
+          instrument: true,
+        },
+      })
+
+      return {
+        success: true,
+        order: {
+          id: updatedOrder.id,
+          status: updatedOrder.status.code,
+          instrumentSymbol: updatedOrder.instrument.symbol,
+          side: updatedOrder.side.code,
+          type: updatedOrder.type.code,
+          cancelledAt: updatedOrder.updatedAt,
+        },
+      }
+    })
+
+    res.json(result)
+  } catch (error) {
+    console.error('Cancel order error:', error)
+    res.status(400).json({ error: error.message })
   }
 }

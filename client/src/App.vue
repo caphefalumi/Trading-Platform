@@ -1,11 +1,35 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { clearUser, sessionState } from './stores/session'
 import apiClient from './utils/api'
+import websocketClient from './utils/websocket'
 
 const router = useRouter()
 const account = computed(() => sessionState.account)
+
+// Initialize WebSocket connection when app mounts
+onMounted(() => {
+  websocketClient.connect()
+})
+
+// Subscribe to account updates when user logs in
+watch(() => sessionState.account, (newAccount, oldAccount) => {
+  if (oldAccount?.id) {
+    websocketClient.unsubscribeFromAccount(oldAccount.id)
+  }
+  if (newAccount?.id) {
+    websocketClient.subscribeToAccount(newAccount.id)
+  }
+}, { immediate: true })
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (sessionState.account?.id) {
+    websocketClient.unsubscribeFromAccount(sessionState.account.id)
+  }
+  websocketClient.disconnect()
+})
 
 const signOut = async () => {
   try {

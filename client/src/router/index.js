@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import MarketDataView from '../views/MarketDataView.vue'
 import TradeView from '../views/TradeView.vue'
+import OrderHistoryView from '../views/OrderHistoryView.vue'
 import { sessionState, initSession, clearUser } from '../stores/session'
 
 const routes = [
@@ -40,6 +41,12 @@ const routes = [
     path: '/trade',
     name: 'trade',
     component: TradeView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/orders',
+    name: 'orders',
+    component: OrderHistoryView,
     meta: { requiresAuth: true },
   },
   {

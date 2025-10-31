@@ -15,7 +15,7 @@ const app = express()
 const httpServer = createServer(app)
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://weary-corpse-95xgq5jj64wc7g69-3000.app.github.dev', '*'],
     credentials: true,
   }),
 )

@@ -125,14 +125,14 @@ describe('Crypto Utility', () => {
 
     it('should handle API errors and return empty array', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      
+
       apiClient.get.mockRejectedValue(new Error('Network error'))
 
       const result = await getCryptoPrices()
 
       expect(result).toEqual([])
       expect(consoleSpy).toHaveBeenCalledWith('Error fetching crypto prices:', expect.any(Error))
-      
+
       consoleSpy.mockRestore()
     })
 

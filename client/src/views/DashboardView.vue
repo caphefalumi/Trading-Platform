@@ -795,25 +795,23 @@ onMounted(async () => {
   }, 15000)
 
   // Handle window resize
-  const handleResize = () => {
-    if (echartsInstance) {
-      echartsInstance.resize()
-    }
-  }
   window.addEventListener('resize', handleResize)
 })
 
+const handleResize = () => {
+  if (echartsInstance) {
+    echartsInstance.resize()
+  }
+}
+
 onUnmounted(() => {
-  // Cleanup chart
   if (echartsInstance) {
     echartsInstance.dispose()
     echartsInstance = null
   }
 
-  // Clean up resize listener
   window.removeEventListener('resize', handleResize)
 
-  // Clear all polling intervals
   if (priceUpdateInterval) {
     clearInterval(priceUpdateInterval)
   }

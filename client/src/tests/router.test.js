@@ -63,7 +63,7 @@ describe('Router Configuration', () => {
     vi.clearAllMocks()
     sessionState.account = null
     sessionState.isLoading = false
-    
+
     router = createRouter({
       history: createMemoryHistory(),
       routes,

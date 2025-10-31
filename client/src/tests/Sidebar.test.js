@@ -81,10 +81,10 @@ describe('Sidebar Component', () => {
   describe('Navigation', () => {
     it('should navigate to dashboard when clicking Dashboard menu item', async () => {
       wrapper = createWrapper()
-      
+
       const dashboardItem = wrapper.findAll('li').find(li => li.text().includes('Dashboard'))
       expect(dashboardItem).toBeDefined()
-      
+
       await dashboardItem.trigger('click')
       await nextTick()
 
@@ -93,10 +93,10 @@ describe('Sidebar Component', () => {
 
     it('should navigate to trade when clicking Trade menu item', async () => {
       wrapper = createWrapper()
-      
+
       const tradeItem = wrapper.findAll('li').find(li => li.text().includes('Trade'))
       expect(tradeItem).toBeDefined()
-      
+
       await tradeItem.trigger('click')
       await nextTick()
 
@@ -105,10 +105,10 @@ describe('Sidebar Component', () => {
 
     it('should navigate to market-data when clicking Market Data menu item', async () => {
       wrapper = createWrapper()
-      
+
       const marketItem = wrapper.findAll('li').find(li => li.text().includes('Market Data'))
       expect(marketItem).toBeDefined()
-      
+
       await marketItem.trigger('click')
       await nextTick()
 
@@ -117,10 +117,10 @@ describe('Sidebar Component', () => {
 
     it('should navigate to orders when clicking Orders menu item', async () => {
       wrapper = createWrapper()
-      
+
       const ordersItem = wrapper.findAll('li').find(li => li.text().includes('Orders'))
       expect(ordersItem).toBeDefined()
-      
+
       await ordersItem.trigger('click')
       await nextTick()
 
@@ -132,10 +132,10 @@ describe('Sidebar Component', () => {
     it('should highlight dashboard menu item when on dashboard route', () => {
       mockRoute.name = 'dashboard'
       wrapper = createWrapper()
-      
+
       const dashboardItems = wrapper.findAll('li.active')
       const hasDashboard = dashboardItems.some(item => item.text().includes('Dashboard'))
-      
+
       expect(hasDashboard).toBe(true)
     })
 
@@ -147,7 +147,7 @@ describe('Sidebar Component', () => {
         if (routeName === 'orders' && itemName === 'orders') return true
         return false
       }
-      
+
       expect(isActive('trade', 'trade')).toBe(true)
       expect(isActive('trade', 'dashboard')).toBe(false)
     })
@@ -155,10 +155,10 @@ describe('Sidebar Component', () => {
     it('should apply active class when route matches trade', () => {
       mockRoute.name = 'trade'
       wrapper = createWrapper()
-      
+
       const allItems = wrapper.findAll('li')
       const tradeItem = allItems.find(item => item.text().includes('Trade'))
-      
+
       // Component should have logic to apply active class
       expect(tradeItem).toBeDefined()
     })
@@ -166,10 +166,10 @@ describe('Sidebar Component', () => {
     it('should apply active class when route matches market-data', () => {
       mockRoute.name = 'market-data'
       wrapper = createWrapper()
-      
+
       const allItems = wrapper.findAll('li')
       const marketDataItem = allItems.find(item => item.text().includes('Market Data'))
-      
+
       // Component should have logic to apply active class
       expect(marketDataItem).toBeDefined()
     })
@@ -178,7 +178,7 @@ describe('Sidebar Component', () => {
   describe('Icons', () => {
     it('should render MDI icons for all menu items', () => {
       wrapper = createWrapper()
-      
+
       const icons = wrapper.findAll('.mdi')
       expect(icons.length).toBeGreaterThan(0)
     })

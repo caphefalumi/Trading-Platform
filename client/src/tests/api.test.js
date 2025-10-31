@@ -12,7 +12,7 @@ describe('API Client', () => {
       baseURL: 'http://localhost:3001',
       withCredentials: true,
     })
-    
+
     expect(instance).toBeDefined()
   })
 
@@ -22,7 +22,7 @@ describe('API Client', () => {
       withCredentials: true,
     }
     const instance = axios.create(config)
-    
+
     expect(instance.defaults.baseURL).toBe('http://localhost:3001')
   })
 
@@ -31,13 +31,13 @@ describe('API Client', () => {
       baseURL: 'http://localhost:3001',
       withCredentials: true,
     })
-    
+
     expect(instance.defaults.withCredentials).toBe(true)
   })
 
   it('should be able to setup interceptors', () => {
     const instance = axios.create()
-    
+
     expect(instance.interceptors).toBeDefined()
     expect(instance.interceptors.request).toBeDefined()
     expect(instance.interceptors.response).toBeDefined()
@@ -45,7 +45,7 @@ describe('API Client', () => {
 
   it('should have HTTP methods available', () => {
     const instance = axios.create()
-    
+
     expect(instance.get).toBeDefined()
     expect(instance.post).toBeDefined()
     expect(instance.put).toBeDefined()

@@ -24,11 +24,6 @@
         <li><span class="mdi mdi-cog"></span> Settings</li>
         <li><span class="mdi mdi-history"></span> History</li>
       </ul>
-      <h2>EXTRA</h2>
-      <ul>
-        <li><span class="mdi mdi-newspaper"></span> News</li>
-        <li><span class="mdi mdi-comment"></span> Feedback</li>
-      </ul>
     </nav>
   </aside>
 </template>

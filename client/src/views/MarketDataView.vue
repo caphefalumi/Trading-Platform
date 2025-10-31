@@ -121,6 +121,7 @@ import marketDataService from '../services/marketData'
 
 const marketData = ref([])
 let marketDataPollingInterval = null
+let priceUpdateInterval = null
 const isConnected = computed(() => true) // Always connected with polling
 
 // Chart variables
@@ -460,6 +461,13 @@ const updateChartPrices = async () => {
   }
 }
 
+// Handle window resize - defined outside hooks so it's accessible in onUnmounted
+const handleResize = () => {
+  if (echartsInstance) {
+    echartsInstance.resize()
+  }
+}
+
 onMounted(async () => {
   // Load initial data
   await loadMarketData()
@@ -472,14 +480,9 @@ onMounted(async () => {
   await updateChartPrices()
 
   // Update chart prices periodically (every 30 seconds)
-  const priceUpdateInterval = setInterval(updateChartPrices, 30000)
+  priceUpdateInterval = setInterval(updateChartPrices, 30000)
 
   // Handle window resize for chart
-  const handleResize = () => {
-    if (echartsInstance) {
-      echartsInstance.resize()
-    }
-  }
   window.addEventListener('resize', handleResize)
 
   // Poll market data every 10 seconds

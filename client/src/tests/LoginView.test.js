@@ -57,12 +57,12 @@ describe('LoginView Component', () => {
     it('should call API with correct endpoint on login', async () => {
       const mockAccount = { id: '123', email: 'test@example.com' }
       const mockFormData = { email: 'test@example.com', password: 'password123' }
-      
+
       apiClient.post.mockResolvedValue({ data: { account: mockAccount } })
 
       // Simulate login logic
       const response = await apiClient.post('/api/auth/login', mockFormData)
-      
+
       expect(apiClient.post).toHaveBeenCalledWith('/api/auth/login', mockFormData)
       expect(response.data.account).toEqual(mockAccount)
     })
@@ -115,7 +115,7 @@ describe('LoginView Component', () => {
         (v) => !!v || 'Email is required',
         (v) => /.+@.+\..+/.test(v) || 'Email must be valid',
       ]
-      
+
       expect(emailRules[0]('')).toBe('Email is required')
       expect(emailRules[0]('test@example.com')).toBe(true)
       expect(emailRules[1]('invalid')).toBe('Email must be valid')
@@ -124,7 +124,7 @@ describe('LoginView Component', () => {
 
     it('should have password validation rules', () => {
       const passwordRules = [(v) => !!v || 'Password is required']
-      
+
       expect(passwordRules[0]('')).toBe('Password is required')
       expect(passwordRules[0]('password123')).toBe(true)
     })

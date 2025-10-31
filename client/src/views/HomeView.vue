@@ -19,12 +19,6 @@
           <li><span class="mdi mdi-cog"></span> Settings <span class="indicator red"></span></li>
           <li><span class="mdi mdi-history"></span> History</li>
         </ul>
-
-        <h2>EXTRA</h2>
-        <ul>
-          <li id="news-item"><span class="mdi mdi-newspaper"></span> News <span class="tag new">new</span></li>
-          <li><span class="mdi mdi-comment"></span> Feedback</li>
-        </ul>
       </nav>
     </aside>
     <div class="dashboard-main-wrapper">

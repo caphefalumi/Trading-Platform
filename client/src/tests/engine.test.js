@@ -109,7 +109,7 @@ describe('Engine Utility', () => {
     it('should log errors to console', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const mockError = { response: { data: { error: 'Test error' } } }
-      
+
       apiClient.post.mockRejectedValue(mockError)
 
       try {

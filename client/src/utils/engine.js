@@ -14,9 +14,8 @@ export async function submitOrder(orderData) {
   }
 }
 
-// Example usage in a component:
 // import { submitOrder } from '@/utils/engine'
-// await submitOrder({ 
+// await submitOrder({
 //   accountId: 'account-id',
 //   instrumentId: 'instrument-id',
 //   side: 'BUY' or 'SELL',

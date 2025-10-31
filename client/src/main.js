@@ -31,7 +31,7 @@ const vuetify = createVuetify({
 const app = createApp(App)
 app.use(vuetify)
 app.use(vue3GoogleLogin, {
-  clientId: import.meta.env.VITE_CLIENT_ID,
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
 })
 app.use(router)
 app.mount('#app')

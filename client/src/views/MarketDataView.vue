@@ -115,14 +115,13 @@
 </template>
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import { websocketClient } from '../utils/websocket'
 import { api } from '../utils/api'
 import * as echarts from 'echarts'
 import marketDataService from '../services/marketData'
 
 const marketData = ref([])
-const unsubscribeMarketData = ref(null)
-const isConnected = computed(() => websocketClient.isConnected || false)
+let marketDataPollingInterval = null
+const isConnected = computed(() => true) // Always connected with polling
 
 // Chart variables
 const mainCandlestickChart = ref(null)
@@ -483,24 +482,11 @@ onMounted(async () => {
   }
   window.addEventListener('resize', handleResize)
 
-  // Subscribe to real-time market data updates
-  unsubscribeMarketData.value = websocketClient.onMarketData((data) => {
-    // Update the marketData array with new prices
-    if (Array.isArray(data)) {
-      marketData.value = data
-    } else if (data.instrumentId) {
-      // Single instrument update
-      const index = marketData.value.findIndex(item => item.instrumentId === data.instrumentId)
-      if (index !== -1) {
-        marketData.value[index] = { ...marketData.value[index], ...data }
-      } else {
-        marketData.value.push(data)
-      }
-    }
-
-    // Update chart with latest price data
+  // Poll market data every 10 seconds
+  marketDataPollingInterval = setInterval(() => {
+    loadMarketData()
     updateChartPrices()
-  })
+  }, 10000)
 })
 
 onUnmounted(() => {
@@ -518,9 +504,9 @@ onUnmounted(() => {
     clearInterval(priceUpdateInterval)
   }
 
-  // Clean up WebSocket subscriptions
-  if (unsubscribeMarketData.value) {
-    unsubscribeMarketData.value()
+  // Clear market data polling
+  if (marketDataPollingInterval) {
+    clearInterval(marketDataPollingInterval)
   }
 })
 </script>

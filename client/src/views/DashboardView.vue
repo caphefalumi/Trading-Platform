@@ -77,7 +77,7 @@
     <!-- Account Balance Section -->
     <div class="balance-section card">
       <h2>Account Balance</h2>
-      
+
       <!-- Total Account Value -->
       <div v-if="!loading && totalAccountValue > 0" class="total-account-value">
         <div class="total-label">Total Account Value</div>
@@ -242,7 +242,6 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { sessionState } from '../stores/session'
 import apiClient from '../utils/api'
-import websocketClient from '../utils/websocket'
 import marketDataService from '../services/marketData'
 import * as echarts from 'echarts'
 
@@ -281,13 +280,10 @@ const timePeriods = [
   { label: 'ALL', value: 'all' }
 ]
 
-// WebSocket unsubscribe functions
-let unsubscribeBalance = null
-let unsubscribeOrder = null
-let unsubscribeExecution = null
-
-// Chart price update interval
+// Polling intervals
 let priceUpdateInterval = null
+let balancePollingInterval = null
+let portfolioPollingInterval = null
 
 const showDeposit = ref(false)
 const showWithdraw = ref(false)
@@ -360,10 +356,10 @@ const loadBalance = async () => {
     // Load balances
     const response = await apiClient.get(`/api/accounts/${sessionState.account.id}/balance`)
     balances.value = response.data.balances || []
-    
+
     // Fetch latest crypto prices
     await fetchCryptoPrices()
-    
+
     // Calculate total account value
     calculateTotalAccountValue()
   } catch (error) {
@@ -397,7 +393,7 @@ const loadMarketInsights = async () => {
     if (response.data.success && response.data.data) {
       const prices = response.data.data
       console.log('Prices data:', prices)
-      
+
       // Update market insights
       marketInsights.value = marketInsights.value.map(insight => {
         const symbolKey = insight.symbol.split('/')[0] // 'BTC' or 'ETH'
@@ -415,7 +411,7 @@ const loadMarketInsights = async () => {
         return insight
       })
       console.log('Updated market insights:', marketInsights.value)
-      
+
       // Recalculate total account value with updated prices
       calculateTotalAccountValue()
     }
@@ -785,7 +781,18 @@ onMounted(async () => {
   // Set up price update interval (every 30 seconds)
   priceUpdateInterval = setInterval(() => {
     updateChartPrices()
+    loadMarketInsights()
   }, 30000)
+
+  // Set up balance polling (every 10 seconds)
+  balancePollingInterval = setInterval(() => {
+    loadBalance()
+  }, 10000)
+
+  // Set up portfolio polling (every 15 seconds)
+  portfolioPollingInterval = setInterval(() => {
+    loadPortfolio()
+  }, 15000)
 
   // Handle window resize
   const handleResize = () => {
@@ -794,31 +801,6 @@ onMounted(async () => {
     }
   }
   window.addEventListener('resize', handleResize)
-
-  // Subscribe to real-time balance updates
-  unsubscribeBalance = websocketClient.onBalanceUpdate((data) => {
-    console.log('Balance update received in dashboard:', data)
-    loadBalance() // Reload balance when updated
-  })
-
-  // Subscribe to order updates
-  unsubscribeOrder = websocketClient.onOrderUpdate((data) => {
-    console.log('Order update received in dashboard:', data)
-    loadPortfolio() // Reload portfolio when orders are filled
-  })
-
-  // Subscribe to execution notifications
-  unsubscribeExecution = websocketClient.onExecution((data) => {
-    console.log('Execution received in dashboard:', data)
-    showFeedback(`Order executed: ${data.quantity} @ ${data.price}`, 'success')
-    loadBalance()
-    loadPortfolio()
-  })
-
-  // Subscribe to market data updates via WebSocket
-  websocketClient.onMarketData((data) => {
-    updateChartPrices()
-  })
 })
 
 onUnmounted(() => {
@@ -831,15 +813,16 @@ onUnmounted(() => {
   // Clean up resize listener
   window.removeEventListener('resize', handleResize)
 
-  // Clear price update interval
+  // Clear all polling intervals
   if (priceUpdateInterval) {
     clearInterval(priceUpdateInterval)
   }
-
-  // Cleanup WebSocket subscriptions
-  if (unsubscribeBalance) unsubscribeBalance()
-  if (unsubscribeOrder) unsubscribeOrder()
-  if (unsubscribeExecution) unsubscribeExecution()
+  if (balancePollingInterval) {
+    clearInterval(balancePollingInterval)
+  }
+  if (portfolioPollingInterval) {
+    clearInterval(portfolioPollingInterval)
+  }
 })
 </script>
 

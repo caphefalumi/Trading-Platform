@@ -214,7 +214,6 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { submitOrder } from '../utils/engine'
 import { sessionState } from '../stores/session'
 import { api } from '../utils/api'
-import { websocketClient } from '../utils/websocket'
 
 const form = ref({
   instrumentId: '',
@@ -232,8 +231,7 @@ const recentExecutions = ref([])
 const loading = ref(false)
 const feedback = ref(null)
 const showFeedback = ref(false)
-const unsubscribeMarketData = ref(null)
-const unsubscribeExecution = ref(null)
+let marketDataPollingInterval = null
 
 const instrumentOptions = computed(() =>
   instruments.value.map(instr => ({
@@ -253,7 +251,7 @@ const tifOptions = [
   { value: 5, title: 'FOK (Fill or Kill)' }
 ]
 
-const isConnected = computed(() => websocketClient.isConnected || false)
+const isConnected = computed(() => true) // Always connected with polling
 
 const selectedInstrument = computed(() => {
   if (!form.value.instrumentId) return null
@@ -391,50 +389,15 @@ onMounted(async () => {
   await loadInstruments()
   await loadMarketData()
 
-  // Subscribe to real-time market data
-  unsubscribeMarketData.value = websocketClient.onMarketData((data) => {
-    if (Array.isArray(data)) {
-      const dataMap = {}
-      data.forEach(item => {
-        dataMap[item.instrumentId] = item
-      })
-      marketData.value = dataMap
-    } else if (data.instrumentId) {
-      marketData.value[data.instrumentId] = data
-    }
-  })
-
-  // Subscribe to execution notifications
-  unsubscribeExecution.value = websocketClient.onExecution((execution) => {
-    // Add to recent executions
-    recentExecutions.value.unshift({
-      id: execution.id,
-      side: execution.sideId === 1 ? 'Buy' : 'Sell',
-      quantity: execution.quantity,
-      price: execution.price,
-      createdAt: execution.createdAt
-    })
-
-    // Keep only last 5
-    if (recentExecutions.value.length > 5) {
-      recentExecutions.value.pop()
-    }
-
-    // Show notification
-    feedback.value = {
-      type: 'success',
-      message: `Execution: ${execution.sideId === 1 ? 'Bought' : 'Sold'} ${execution.quantity} @ $${execution.price}`
-    }
-    showFeedback.value = true
-  })
+  // Poll market data every 5 seconds
+  marketDataPollingInterval = setInterval(() => {
+    loadMarketData()
+  }, 5000)
 })
 
 onUnmounted(() => {
-  if (unsubscribeMarketData.value) {
-    unsubscribeMarketData.value()
-  }
-  if (unsubscribeExecution.value) {
-    unsubscribeExecution.value()
+  if (marketDataPollingInterval) {
+    clearInterval(marketDataPollingInterval)
   }
 })
 </script>

@@ -3,10 +3,10 @@ import axios from 'axios'
 
 /**
  * Market Data Agent
- * 
+ *
  * Fetches real-time cryptocurrency prices from external APIs
  * and updates the market_quotes table.
- * 
+ *
  * Supports multiple data sources:
  * - CoinGecko (free, no API key required)
  * - CoinMarketCap (requires API key)
@@ -20,7 +20,7 @@ class MarketDataAgent {
     this.coinGeckoBaseUrl = 'https://api.coingecko.com/api/v3'
     this.coinMarketCapBaseUrl = 'https://pro-api.coinmarketcap.com/v1'
     this.coinMarketCapApiKey = process.env.COINMARKETCAP_API_KEY
-    
+
     // Map instrument symbols to CoinGecko IDs
     this.coinGeckoMap = {
       'BTC': 'bitcoin',
@@ -41,18 +41,16 @@ class MarketDataAgent {
    */
   start() {
     if (this.isRunning) {
-      console.log('Market Data Agent is already running')
       return
     }
 
-    console.log('🚀 Starting Market Data Agent...')
     this.isRunning = true
-    
+
     // Initial fetch
     this.updateMarketData().catch(err => {
       console.error('Initial market data fetch failed:', err.message)
     })
-    
+
     // Set up periodic updates
     this.intervalId = setInterval(() => {
       this.updateMarketData().catch(err => {
@@ -60,7 +58,6 @@ class MarketDataAgent {
       })
     }, this.updateInterval)
 
-    console.log(`✅ Market Data Agent started (updating every ${this.updateInterval / 1000}s)`)
   }
 
   /**
@@ -68,17 +65,14 @@ class MarketDataAgent {
    */
   stop() {
     if (!this.isRunning) {
-      console.log('Market Data Agent is not running')
       return
     }
 
-    console.log('🛑 Stopping Market Data Agent...')
     if (this.intervalId) {
       clearInterval(this.intervalId)
       this.intervalId = null
     }
     this.isRunning = false
-    console.log('✅ Market Data Agent stopped')
   }
 
   /**
@@ -117,7 +111,7 @@ class MarketDataAgent {
       }
 
       const ids = coinIds.map(c => c.coinGeckoId).join(',')
-      
+
       // Fetch prices from CoinGecko
       const response = await axios.get(`${this.coinGeckoBaseUrl}/simple/price`, {
         params: {
@@ -200,7 +194,7 @@ class MarketDataAgent {
       for (const inst of instruments) {
         const symbol = inst.symbol.replace(/USDT$/, '')
         const data = response.data.data[symbol]
-        
+
         if (data && data.quote && data.quote.USD) {
           const quote = data.quote.USD
           quotes.push({
@@ -228,15 +222,14 @@ class MarketDataAgent {
    */
   async updateMarketData() {
     try {
-      console.log('📊 Fetching market data...')
 
       // Try CoinMarketCap first (if API key available), fall back to CoinGecko
       let quotes = []
-      
+
       if (this.coinMarketCapApiKey) {
         quotes = await this.fetchFromCoinMarketCap()
       }
-      
+
       if (quotes.length === 0) {
         quotes = await this.fetchFromCoinGecko()
       }
@@ -265,7 +258,6 @@ class MarketDataAgent {
       const successful = results.filter(r => r.status === 'fulfilled').length
       const failed = results.filter(r => r.status === 'rejected').length
 
-      console.log(`✅ Updated ${successful} market quotes${failed > 0 ? ` (${failed} failed)` : ''}`)
 
       return quotes
     } catch (error) {

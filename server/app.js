@@ -10,7 +10,6 @@ import engineRoutes from './routes/engineRoutes.js' // Import the engine routes
 import proxyRoutes from './routes/proxyRoutes.js' // Import the proxy routes
 import { ensureReferenceData } from './utils/referenceData.js'
 import marketDataAgent from './services/marketDataAgent.js'
-import websocketService from './services/websocket.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -37,10 +36,6 @@ if (process.env.NODE_ENV !== 'test') {
     .then(() => {
       httpServer.listen(PORT, () => {
         console.log(`Server listening on port ${PORT}`)
-
-        // Initialize WebSocket service
-        websocketService.initialize(httpServer)
-
         // Start market data agent
         marketDataAgent.start()
       })
@@ -54,7 +49,6 @@ if (process.env.NODE_ENV !== 'test') {
   const shutdown = () => {
     console.log('Shutdown signal received: closing server...')
     marketDataAgent.stop()
-    websocketService.stop()
     httpServer.close(() => {
       console.log('Server closed')
       process.exit(0)

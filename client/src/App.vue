@@ -1,9 +1,8 @@
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { clearUser, sessionState } from './stores/session'
 import apiClient from './utils/api'
-import websocketClient from './utils/websocket'
 import Sidebar from './components/Sidebar.vue'
 
 const router = useRouter()
@@ -13,29 +12,6 @@ const account = computed(() => sessionState.account)
 // Show sidebar on authenticated pages (not login/register)
 const showSidebar = computed(() => {
   return route.name !== 'login' && route.name !== 'register'
-})
-
-// Initialize WebSocket connection when app mounts
-onMounted(() => {
-  websocketClient.connect()
-})
-
-// Subscribe to account updates when user logs in
-watch(() => sessionState.account, (newAccount, oldAccount) => {
-  if (oldAccount?.id) {
-    websocketClient.unsubscribeFromAccount(oldAccount.id)
-  }
-  if (newAccount?.id) {
-    websocketClient.subscribeToAccount(newAccount.id)
-  }
-}, { immediate: true })
-
-// Cleanup on unmount
-onUnmounted(() => {
-  if (sessionState.account?.id) {
-    websocketClient.unsubscribeFromAccount(sessionState.account.id)
-  }
-  websocketClient.disconnect()
 })
 
 const signOut = async () => {

@@ -26,10 +26,10 @@ apiClient.interceptors.response.use(
 // -----------------------------------------------------------
 const cmcClient = axios.create({
   // CMC_BASE_URL: "https://sandbox-api.coinmarketcap.com"
-  baseURL: import.meta.env.CMC_BASE_URL,
+  baseURL: import.meta.env.VITE_CMC_BASE_URL || 'https://sandbox-api.coinmarketcap.com',
   headers: {
     // API Key được đặt trong Header
-    'X-CMC-Pro-API-Key': import.meta.env.COINMARKETCAP_API_KEY,
+    'X-CMC-Pro-API-Key': import.meta.env.VITE_COINMARKETCAP_API_KEY || '',
     'Accept': 'application/json',
   },
   // CMC không cần withCredentials: true

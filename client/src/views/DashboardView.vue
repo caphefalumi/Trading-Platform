@@ -96,7 +96,7 @@
             <div class="currency-icon-wrapper">
               <span v-if="balance.currency === 'BTC'" class="mdi mdi-bitcoin currency-icon btc-icon"></span>
               <span v-else-if="balance.currency === 'ETH'" class="mdi mdi-ethereum currency-icon eth-icon"></span>
-              <span v-else class="mdi mdi-currency-usd currency-icon usdt-icon"></span>
+              <span v-else class="mdi mdi-currency-usd currency-icon usd-icon"></span>
             </div>
             <div class="currency-info">
               <div class="currency-label">{{ getCurrencyName(balance.currency) }}</div>
@@ -124,42 +124,83 @@
 
     <!-- Portfolio Section -->
     <div class="portfolio-section card">
-      <h2>Portfolio</h2>
-      <div v-if="loadingPortfolio" class="loading">Loading positions...</div>
-      <div v-else-if="portfolio.length === 0" class="empty-state">
-        <p>No open positions</p>
-      </div>
-      <table v-else class="portfolio-table">
-        <thead>
-          <tr>
-            <th>Symbol</th>
-            <th>Quantity</th>
-            <th>Avg Price</th>
-            <th>Mark Price</th>
-            <th>Market Value</th>
-            <th>P&L</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="position in portfolio" :key="position.instrumentId">
-            <td class="symbol">{{ position.symbol }}</td>
-            <td>{{ formatNumber(position.quantity) }}</td>
-            <td>{{ formatCurrency(position.averagePrice) }}</td>
-            <td>{{ formatCurrency(position.markPrice) }}</td>
-            <td>{{ formatCurrency(position.marketValue) }}</td>
-            <td :class="getPnLClass(position)">{{ formatCurrency(position.pnl) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <h2>Portfolio & Holdings</h2>
 
-      <div v-if="portfolioSummary" class="portfolio-summary">
+      <!-- Currency Holdings -->
+      <div v-if="balances.length > 0" class="holdings-section">
+        <h3>Currency Holdings</h3>
+        <table class="portfolio-table">
+          <thead>
+            <tr>
+              <th>Currency</th>
+              <th>Available</th>
+              <th>Reserved</th>
+              <th>Total</th>
+              <th>USD Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="balance in balances" :key="balance.currency">
+              <td class="symbol">
+                <span v-if="balance.currency === 'BTC'" class="mdi mdi-bitcoin" style="color: #f7931a;"></span>
+                <span v-else-if="balance.currency === 'ETH'" class="mdi mdi-ethereum" style="color: #627eea;"></span>
+                <span v-else class="mdi mdi-currency-usd" style="color: #26a17b;"></span>
+                {{ balance.currency }}
+              </td>
+              <td>{{ formatNumber(balance.available, 8) }}</td>
+              <td>{{ formatNumber(balance.reserved, 8) }}</td>
+              <td class="font-bold">{{ formatNumber(balance.total, 8) }}</td>
+              <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Trading Positions -->
+      <div v-if="portfolio.length > 0" class="positions-section">
+        <h3>Trading Positions</h3>
+        <div v-if="loadingPortfolio" class="loading">Loading positions...</div>
+        <table v-else class="portfolio-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Quantity</th>
+              <th>Avg Price</th>
+              <th>Mark Price</th>
+              <th>Market Value</th>
+              <th>P&L</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="position in portfolio" :key="position.instrumentId">
+              <td class="symbol">{{ position.symbol }}</td>
+              <td>{{ formatNumber(position.quantity) }}</td>
+              <td>{{ formatCurrency(position.averagePrice) }}</td>
+              <td>{{ formatCurrency(position.markPrice) }}</td>
+              <td>{{ formatCurrency(position.marketValue) }}</td>
+              <td :class="getPnLClass(position)">{{ formatCurrency(position.pnl) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="balances.length === 0 && portfolio.length === 0" class="empty-state">
+        <p>No holdings or positions yet. Start trading to see your portfolio here!</p>
+      </div>
+
+      <!-- Portfolio Summary -->
+      <div v-if="portfolioSummary || totalAccountValue > 0" class="portfolio-summary">
         <div class="summary-item">
-          <span class="label">Total Portfolio Value:</span>
+          <span class="label">Cash Available:</span>
+          <span class="value">{{ formatCurrency(portfolioSummary?.cashAvailable || 0) }}</span>
+        </div>
+        <div v-if="portfolioSummary?.portfolioValue" class="summary-item">
+          <span class="label">Positions Value:</span>
           <span class="value">{{ formatCurrency(portfolioSummary.portfolioValue) }}</span>
         </div>
         <div class="summary-item">
-          <span class="label">Total Equity:</span>
-          <span class="value">{{ formatCurrency(portfolioSummary.equity) }}</span>
+          <span class="label">Total Account Value:</span>
+          <span class="value total-highlight">{{ formatCurrency(totalAccountValue) }}</span>
         </div>
       </div>
     </div>
@@ -175,7 +216,7 @@
           </div>
           <div class="form-group">
             <label>Currency (optional)</label>
-            <input v-model="depositCurrency" type="text" placeholder="e.g., USDT" />
+            <input v-model="depositCurrency" type="text" placeholder="e.g., BTC, ETH, USD" />
           </div>
           <div v-if="feedback" :class="['feedback', feedback.type]">{{ feedback.message }}</div>
           <div class="modal-actions">
@@ -199,7 +240,7 @@
           </div>
           <div class="form-group">
             <label>Currency (optional)</label>
-            <input v-model="withdrawCurrency" type="text" placeholder="e.g., USDT" />
+            <input v-model="withdrawCurrency" type="text" placeholder="e.g., BTC, ETH, USD" />
           </div>
           <div v-if="feedback" :class="['feedback', feedback.type]">{{ feedback.message }}</div>
           <div class="modal-actions">
@@ -223,7 +264,7 @@
           </div>
           <div class="form-group">
             <label>Currency</label>
-            <input v-model="demoCreditCurrency" type="text" placeholder="USDT" />
+            <input v-model="demoCreditCurrency" type="text" placeholder="USD" />
           </div>
           <div v-if="feedback" :class="['feedback', feedback.type]">{{ feedback.message }}</div>
           <div class="modal-actions">
@@ -255,7 +296,7 @@ const totalAccountValue = ref(0)
 const cryptoPrices = ref({
   BTC: 0,
   ETH: 0,
-  USDT: 1 // USDT is pegged to USD
+  USD: 1 // USD is the base currency
 })
 const marketInsights = ref([
   { symbol: 'BTC/USD', price: 0, changePercent: 0 },
@@ -294,7 +335,7 @@ const depositCurrency = ref('')
 const withdrawAmount = ref('')
 const withdrawCurrency = ref('')
 const demoCreditAmount = ref('10000')
-const demoCreditCurrency = ref('USDT')
+const demoCreditCurrency = ref('USD')
 
 const submitting = ref(false)
 const feedback = ref(null)
@@ -329,7 +370,7 @@ const getCurrencyName = (code) => {
   const names = {
     BTC: 'Bitcoin',
     ETH: 'Ethereum',
-    USDT: 'Tether USD'
+    USD: 'US Dollar'
   }
   return names[code] || code
 }
@@ -664,6 +705,7 @@ const loadPortfolio = async () => {
   loadingPortfolio.value = true
   try {
     const response = await apiClient.get(`/api/accounts/${sessionState.account.id}/summary`)
+    console.log('Portfolio response:', response.data)
     portfolio.value = response.data.portfolio || []
     portfolioSummary.value = response.data.totals || null
 
@@ -672,8 +714,10 @@ const loadPortfolio = async () => {
       ...pos,
       pnl: (pos.markPrice - pos.averagePrice) * pos.quantity
     }))
+    console.log('Portfolio loaded:', portfolio.value.length, 'positions')
   } catch (error) {
     console.error('Failed to load portfolio:', error)
+    console.error('Error details:', error.response?.data)
     portfolio.value = []
   } finally {
     loadingPortfolio.value = false
@@ -1227,30 +1271,66 @@ h2 {
   font-weight: 600;
 }
 
+.holdings-section, .positions-section {
+  margin-bottom: 32px;
+}
+
+.holdings-section h3, .positions-section h3 {
+  font-size: 1.25rem;
+  color: #e5e7eb;
+  margin-bottom: 16px;
+  font-weight: 600;
+  border-left: 4px solid #3b82f6;
+  padding-left: 12px;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.usd-value {
+  color: #10b981;
+  font-weight: 600;
+}
+
 .portfolio-summary {
-  border-top: 2px solid var(--border-color, #333);
-  padding-top: 16px;
+  border-top: 2px solid #2d3142;
+  padding-top: 24px;
+  margin-top: 24px;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 24px;
+  background: rgba(59, 130, 246, 0.05);
+  padding: 24px;
+  border-radius: 12px;
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  text-align: center;
 }
 
 .summary-item .label {
   font-size: 0.875rem;
   color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
 .summary-item .value {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #e5e7eb;
+}
+
+.summary-item .value.total-highlight {
+  color: #10b981;
+  font-size: 1.75rem;
+  text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
 }
 
 .modal-overlay {

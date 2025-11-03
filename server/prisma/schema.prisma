@@ -142,13 +142,14 @@ model Order {
   status         OrderStatus      @relation(fields: [statusId], references: [id])
   timeInForceId  Int?             @map("time_in_force_id") @db.SmallInt
   timeInForce    TimeInForceType? @relation(fields: [timeInForceId], references: [id])
-  clientOrderId  String?          @unique @map("client_order_id")
-  price          Decimal?         @db.Decimal(18, 8)
-  quantity       Decimal          @db.Decimal(18, 8)
-  filledQuantity Decimal          @default(0) @map("filled_quantity") @db.Decimal(18, 8)
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  executions     Execution[]
+  clientOrderId     String?          @unique @map("client_order_id")
+  price             Decimal?         @db.Decimal(18, 8)
+  quantity          Decimal          @db.Decimal(18, 8)
+  filledQuantity    Decimal          @default(0) @map("filled_quantity") @db.Decimal(18, 8)
+  remainingQuantity Decimal?         @map("remaining_quantity") @db.Decimal(18, 8)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  executions        Execution[]
 
   @@map("orders")
 }

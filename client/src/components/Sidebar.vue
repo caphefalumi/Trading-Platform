@@ -15,7 +15,7 @@
       </ul>
       <h2>ACCOUNT</h2>
       <ul>
-        <li :class="{ active: $route.name === 'dashboard' }" @click="navigate('dashboard')">
+        <li :class="{ active: $route.name === 'portfolio' }" @click="navigate('portfolio')">
           <span class="mdi mdi-folder-open"></span> Portfolio
         </li>
         <li :class="{ active: $route.name === 'orders' }" @click="navigate('orders')">

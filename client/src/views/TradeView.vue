@@ -334,11 +334,22 @@ const handleSubmit = async () => {
   loading.value = true
   feedback.value = null
   try {
+    // Map form data to backend expected format
+    const sideMap = { 1: 'BUY', 2: 'SELL' }
+    const typeMap = { 2: 'LIMIT', 1: 'MARKET' }
+    const tifMap = { 1: 'DAY', 3: 'GTC', 4: 'IOC', 5: 'FOK' }
+
     const orderData = {
-      ...form.value,
       accountId: sessionState.account?.id,
-      statusId: 1
+      instrumentId: form.value.instrumentId,
+      side: sideMap[form.value.sideId],
+      type: typeMap[form.value.typeId],
+      quantity: parseFloat(form.value.quantity),
+      price: parseFloat(form.value.price),
+      timeInForce: tifMap[form.value.timeInForceId],
+      clientOrderId: form.value.clientOrderId || undefined
     }
+
     await submitOrder(orderData)
     feedback.value = { type: 'success', message: 'Order submitted successfully!' }
     showFeedback.value = true
@@ -371,14 +382,32 @@ const loadInstruments = async () => {
 // Load market data
 const loadMarketData = async () => {
   try {
-    const response = await api.get('/api/marketdata/quotes?symbols=BTC,ETH,USDT,BNB,XRP,ADA,SOL,DOT,DOGE,MATIC')
+    const response = await api.get('/api/marketdata/quotes?symbols=BTC,ETH')
     if (response.data.success && response.data.data) {
-      // Convert array to map by symbol
+      // Convert array to map by instrumentId (match symbol to instrument)
       const dataMap = {}
       response.data.data.forEach(item => {
-        dataMap[item.symbol] = item
+        // Find instrument by matching the base symbol
+        // For example: BTCUSDT should match BTC market data, ETHUSDT should match ETH
+        const instrument = instruments.value.find(inst => {
+          const instSymbol = inst.symbol.toUpperCase()
+          const marketSymbol = item.symbol.toUpperCase()
+          // Check if instrument symbol starts with or contains market symbol
+          // e.g., "BTCUSDT" starts with "BTC", "ETHUSDT" starts with "ETH"
+          return instSymbol.startsWith(marketSymbol) ||
+                 instSymbol.includes(marketSymbol) ||
+                 instSymbol === marketSymbol
+        })
+        if (instrument) {
+          dataMap[instrument.id] = item
+          console.log(`✅ Mapped ${item.symbol} data to instrument ${instrument.symbol} (${instrument.id})`)
+        } else {
+          console.warn(`⚠️ No instrument found for market symbol: ${item.symbol}`)
+          console.log('Available instruments:', instruments.value.map(i => i.symbol))
+        }
       })
       marketData.value = dataMap
+      console.log('Market data loaded:', Object.keys(dataMap).length, 'instruments')
     }
   } catch (error) {
     console.error('Failed to load market data:', error)
@@ -387,6 +416,7 @@ const loadMarketData = async () => {
 
 onMounted(async () => {
   await loadInstruments()
+  // Wait for instruments to load before loading market data
   await loadMarketData()
 
   // Poll market data every 5 seconds

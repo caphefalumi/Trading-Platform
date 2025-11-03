@@ -34,7 +34,9 @@
     <div class="orders-section card">
       <div v-if="loading" class="loading">Loading orders...</div>
       <div v-else-if="orders.length === 0" class="empty-state">
+        <span class="mdi mdi-clipboard-text-outline" style="font-size: 48px; color: #3b82f6; margin-bottom: 16px;"></span>
         <p>No orders found</p>
+        <p style="font-size: 0.875rem; color: #6b7280;">Place your first order in the Trade section to see it here.</p>
       </div>
       <table v-else class="orders-table">
         <thead>
@@ -219,9 +221,12 @@ const loadOrders = async () => {
       `/api/orders/account/${sessionState.account.id}`,
       { params }
     )
+    console.log('Orders loaded:', response.data)
     orders.value = response.data
+    console.log(`Found ${orders.value.length} orders`)
   } catch (error) {
     console.error('Failed to load orders:', error)
+    console.error('Error details:', error.response?.data)
     showFeedback('Failed to load orders', 'error')
   } finally {
     loading.value = false

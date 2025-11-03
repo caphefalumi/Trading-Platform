@@ -218,7 +218,10 @@ const updateOrderFillState = async (
 
 const matchOrder = async (tx, orderRecord, references) => {
   const results = []
-  let remaining = toDecimal(orderRecord.remainingQuantity)
+  // Handle case where remainingQuantity might be null/undefined
+  let remaining = orderRecord.remainingQuantity
+    ? toDecimal(orderRecord.remainingQuantity)
+    : toDecimal(orderRecord.quantity).sub(toDecimal(orderRecord.filledQuantity))
   let filled = toDecimal(orderRecord.filledQuantity)
 
   while (remaining.gt(0)) {
@@ -258,7 +261,10 @@ const matchOrder = async (tx, orderRecord, references) => {
       }
     }
 
-    const counterRemaining = toDecimal(counterOrder.remainingQuantity)
+    // Handle case where remainingQuantity might be null/undefined
+    const counterRemaining = counterOrder.remainingQuantity
+      ? toDecimal(counterOrder.remainingQuantity)
+      : toDecimal(counterOrder.quantity).sub(toDecimal(counterOrder.filledQuantity))
     const fillQty = remaining.lt(counterRemaining) ? remaining : counterRemaining
     const tradePrice = counterOrder.price || orderRecord.price
 
@@ -500,7 +506,9 @@ export const placeOrder = async (req, res) => {
           timeInForceId: tifRef.id,
           price: priceDecimal,
           quantity: qtyDecimal,
+          filledQuantity: toDecimal(0),
           remainingQuantity: qtyDecimal,
+          clientOrderId: req.body.clientOrderId || undefined,
         },
         include: {
           instrument: true,

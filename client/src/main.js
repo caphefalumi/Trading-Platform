@@ -16,7 +16,7 @@ const vuetify = createVuetify({
     defaultTheme: 'dark',
     themes: {
       dark: {
-        colors: {
+          colors: {
           background: '#0b0e11',
           surface: '#131722',
           primary: '#f0b90b',

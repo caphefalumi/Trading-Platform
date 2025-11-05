@@ -12,6 +12,9 @@
         <li :class="{ active: $route.name === 'market-data' }" @click="navigate('market-data')">
           <span class="mdi mdi-chart-line"></span> Market Data
         </li>
+        <li :class="{ active: $route.name === 'vocer' }" @click="navigate('vocer')">
+          <span class="mdi mdi-robot"></span> Vocer
+        </li>
       </ul>
       <h2>ACCOUNT</h2>
       <ul>

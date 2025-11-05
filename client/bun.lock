@@ -11,7 +11,7 @@
         "vue": "^3.5.21",
         "vue-router": "^4.5.1",
         "vue3-google-login": "^2.0.34",
-        "vuetify": "^3.7.2",
+        "vuetify": "^3.7.2"
       },
       "devDependencies": {
         "@vitejs/plugin-vue": "^6.0.1",
@@ -22,9 +22,9 @@
         "jsdom": "^27.1.0",
         "vite": "^7.1.7",
         "vite-plugin-vuetify": "^2.0.3",
-        "vitest": "^4.0.5",
-      },
-    },
+        "vitest": "^4.0.5"
+      }
+    }
   },
   "packages": {
     "@acemir/cssom": ["@acemir/cssom@0.9.19", "", {}, "sha512-Pp2gAQXPZ2o7lt4j0IMwNRXqQ3pagxtDj5wctL5U2Lz4oV0ocDNlkgx4DpxfyKav4S/bePuI+SMqcBSUHLy9kg=="],
@@ -537,6 +537,6 @@
 
     "wrap-ansi-cjs/string-width/emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 
-    "wrap-ansi-cjs/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
+    "wrap-ansi-cjs/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="]
   }
 }

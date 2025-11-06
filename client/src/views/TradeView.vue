@@ -55,16 +55,17 @@
 
               <v-text-field
                 v-model="form.price"
-                label="Price (USD)"
+                label="Price (USDT)"
                 type="number"
                 step="0.01"
-                required
+                :required="form.typeId === 2"
+                :disabled="form.typeId === 1"
                 :hint="priceHint"
                 persistent-hint
               >
                 <template v-slot:append>
                   <v-btn
-                    v-if="currentPrice"
+                    v-if="currentPrice && form.typeId === 2"
                     size="x-small"
                     variant="text"
                     @click="useMarketPrice"
@@ -330,6 +331,18 @@ const useMarketPrice = () => {
   }
 }
 
+// When user selects MARKET order type, lock the price input to current market price
+// and disable editing (UI-level). We still omit the price when submitting so the
+// server/matching engine treats it as a market order.
+watch(() => form.value.typeId, (newVal) => {
+  // typeId === 1 maps to MARKET in this UI
+  if (newVal === 1) {
+    if (currentPrice.value) {
+      form.value.price = currentPrice.value
+    }
+  }
+})
+
 const handleSubmit = async () => {
   loading.value = true
   feedback.value = null
@@ -345,7 +358,8 @@ const handleSubmit = async () => {
       side: sideMap[form.value.sideId],
       type: typeMap[form.value.typeId],
       quantity: parseFloat(form.value.quantity),
-      price: parseFloat(form.value.price),
+      // Only include price for LIMIT orders. MARKET orders will not send a price.
+      ...(typeMap[form.value.typeId] === 'LIMIT' ? { price: parseFloat(form.value.price) } : {}),
       timeInForce: tifMap[form.value.timeInForceId],
       clientOrderId: form.value.clientOrderId || undefined
     }

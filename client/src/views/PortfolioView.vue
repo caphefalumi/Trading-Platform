@@ -16,19 +16,19 @@
       <div v-else-if="portfolioSummary" class="summary-grid">
         <div class="summary-item highlight">
           <div class="label">Total Account Value</div>
-          <div class="value">{{ formatCurrency(totalAccountValue) }}</div>
+          <div class="value">{{ formatCurrency(totalAccountValue) }} USDT</div>
         </div>
         <div class="summary-item">
           <div class="label">Cash Available</div>
-          <div class="value">{{ formatCurrency(portfolioSummary.cashAvailable) }}</div>
+          <div class="value">{{ formatCurrency(portfolioSummary.cashAvailable) }} USDT</div>
         </div>
         <div class="summary-item">
           <div class="label">Portfolio Value</div>
-          <div class="value">{{ formatCurrency(portfolioSummary.portfolioValue || 0) }}</div>
+          <div class="value">{{ formatCurrency(portfolioSummary.portfolioValue || 0) }} USDT</div>
         </div>
         <div class="summary-item">
           <div class="label">Cash Reserved</div>
-          <div class="value">{{ formatCurrency(portfolioSummary.cashReserved || 0) }}</div>
+          <div class="value">{{ formatCurrency(portfolioSummary.cashReserved || 0) }} USDT</div>
         </div>
       </div>
     </div>
@@ -53,7 +53,7 @@
             <th>Available</th>
             <th>Reserved</th>
             <th>Total</th>
-            <th>USD Value</th>
+            <th>USDT Value</th>
             <th>% of Portfolio</th>
           </tr>
         </thead>
@@ -69,7 +69,7 @@
             <td>{{ formatNumber(balance.available, 8) }}</td>
             <td>{{ formatNumber(balance.reserved, 8) }}</td>
             <td class="font-bold">{{ formatNumber(balance.total, 8) }}</td>
-            <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }}</td>
+            <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }} USDT</td>
             <td>
               <div class="percentage-bar">
                 <div class="bar" :style="{ width: getPercentage(balance) + '%' }"></div>
@@ -155,7 +155,8 @@ const portfolioSummary = ref(null)
 const cryptoPrices = ref({
   BTC: 0,
   ETH: 0,
-  USD: 1
+  USD: 1,
+  USDT: 1
 })
 
 const totalAccountValue = computed(() => {
@@ -190,13 +191,14 @@ const getCurrencyName = (code) => {
   const names = {
     BTC: 'Bitcoin',
     ETH: 'Ethereum',
-    USD: 'US Dollar'
+    USD: 'US Dollar',
+    USDT: 'Tether (USDT)'
   }
   return names[code] || code
 }
 
 const getUSDValue = (currency, amount) => {
-  if (currency === 'USD') return parseFloat(amount || 0)
+  if (currency === 'USD' || currency === 'USDT') return parseFloat(amount || 0)
   const price = cryptoPrices.value[currency] || 0
   return price * parseFloat(amount || 0)
 }

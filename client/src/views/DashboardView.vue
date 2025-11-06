@@ -26,7 +26,7 @@
       </div>
 
       <div class="chart-info-header" v-if="currentCandleInfo">
-        <span class="info-pair">{{ currentCandleInfo.symbol }} / U.S. Dollar</span>
+        <span class="info-pair">{{ currentCandleInfo.symbol }} / USDT</span>
 
         <!-- Time Period Selector -->
         <div class="time-period-selector">
@@ -81,7 +81,7 @@
       <!-- Total Account Value -->
       <div v-if="!loading && totalAccountValue > 0" class="total-account-value">
         <div class="total-label">Total Account Value</div>
-        <div class="total-amount">${{ formatNumber(totalAccountValue, 2) }}</div>
+          <div class="total-amount">${{ formatNumber(totalAccountValue, 2) }} USDT</div>
         <div class="total-subtext">Based on current market prices</div>
       </div>
 
@@ -103,9 +103,9 @@
               <div class="currency-code">{{ balance.currency }}</div>
             </div>
           </div>
-          <div class="balance-amount">{{ formatNumber(balance.total, 8) }} {{ balance.currency }}</div>
+            <div class="balance-amount">{{ formatNumber(balance.total, 8) }} {{ balance.currency }}</div>
           <div class="balance-usd-value" v-if="getUSDValue(balance.currency, balance.total) > 0">
-            ≈ ${{ formatNumber(getUSDValue(balance.currency, balance.total), 2) }} USD
+            ≈ ${{ formatNumber(getUSDValue(balance.currency, balance.total), 2) }} USDT
           </div>
           <div class="balance-details">
             <span>Available: {{ formatNumber(balance.available, 8) }}</span>
@@ -136,7 +136,7 @@
               <th>Available</th>
               <th>Reserved</th>
               <th>Total</th>
-              <th>USD Value</th>
+              <th>USDT Value</th>
             </tr>
           </thead>
           <tbody>
@@ -150,7 +150,7 @@
               <td>{{ formatNumber(balance.available, 8) }}</td>
               <td>{{ formatNumber(balance.reserved, 8) }}</td>
               <td class="font-bold">{{ formatNumber(balance.total, 8) }}</td>
-              <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }}</td>
+              <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }} USDT</td>
             </tr>
           </tbody>
         </table>
@@ -192,15 +192,15 @@
       <div v-if="portfolioSummary || totalAccountValue > 0" class="portfolio-summary">
         <div class="summary-item">
           <span class="label">Cash Available:</span>
-          <span class="value">{{ formatCurrency(portfolioSummary?.cashAvailable || 0) }}</span>
+           <span class="value">{{ formatCurrency(portfolioSummary?.cashAvailable || 0) }} USDT</span>
         </div>
         <div v-if="portfolioSummary?.portfolioValue" class="summary-item">
           <span class="label">Positions Value:</span>
-          <span class="value">{{ formatCurrency(portfolioSummary.portfolioValue) }}</span>
+           <span class="value">{{ formatCurrency(portfolioSummary.portfolioValue) }} USDT</span>
         </div>
         <div class="summary-item">
           <span class="label">Total Account Value:</span>
-          <span class="value total-highlight">{{ formatCurrency(totalAccountValue) }}</span>
+           <span class="value total-highlight">{{ formatCurrency(totalAccountValue) }} USDT</span>
         </div>
       </div>
     </div>
@@ -216,7 +216,7 @@
           </div>
           <div class="form-group">
             <label>Currency (optional)</label>
-            <input v-model="depositCurrency" type="text" placeholder="e.g., BTC, ETH, USD" />
+            <input v-model="depositCurrency" type="text" placeholder="e.g., BTC, ETH, USDT" />
           </div>
           <div v-if="feedback" :class="['feedback', feedback.type]">{{ feedback.message }}</div>
           <div class="modal-actions">
@@ -240,7 +240,7 @@
           </div>
           <div class="form-group">
             <label>Currency (optional)</label>
-            <input v-model="withdrawCurrency" type="text" placeholder="e.g., BTC, ETH, USD" />
+            <input v-model="withdrawCurrency" type="text" placeholder="e.g., BTC, ETH, USDT" />
           </div>
           <div v-if="feedback" :class="['feedback', feedback.type]">{{ feedback.message }}</div>
           <div class="modal-actions">
@@ -264,7 +264,7 @@
           </div>
           <div class="form-group">
             <label>Currency</label>
-            <input v-model="demoCreditCurrency" type="text" placeholder="USD" />
+            <input v-model="demoCreditCurrency" type="text" placeholder="USDT" />
           </div>
           <div v-if="feedback" :class="['feedback', feedback.type]">{{ feedback.message }}</div>
           <div class="modal-actions">
@@ -296,11 +296,12 @@ const totalAccountValue = ref(0)
 const cryptoPrices = ref({
   BTC: 0,
   ETH: 0,
-  USD: 1 // USD is the base currency
+  USD: 1,
+  USDT: 1 // USDT is the base currency (1:1 with USD)
 })
 const marketInsights = ref([
-  { symbol: 'BTC/USD', price: 0, changePercent: 0 },
-  { symbol: 'ETH/USD', price: 0, changePercent: 0 },
+  { symbol: 'BTC/USDT', price: 0, changePercent: 0 },
+  { symbol: 'ETH/USDT', price: 0, changePercent: 0 },
 ])
 
 // Chart variables
@@ -335,7 +336,7 @@ const depositCurrency = ref('')
 const withdrawAmount = ref('')
 const withdrawCurrency = ref('')
 const demoCreditAmount = ref('10000')
-const demoCreditCurrency = ref('USD')
+  const demoCreditCurrency = ref('USDT')
 
 const submitting = ref(false)
 const feedback = ref(null)
@@ -370,12 +371,15 @@ const getCurrencyName = (code) => {
   const names = {
     BTC: 'Bitcoin',
     ETH: 'Ethereum',
-    USD: 'US Dollar'
+    USD: 'US Dollar',
+    USDT: 'Tether (USDT)'
   }
   return names[code] || code
 }
 
 const getUSDValue = (currency, amount) => {
+  // Treat USD and USDT as equivalent base currencies (1:1)
+  if (currency === 'USD' || currency === 'USDT') return parseFloat(amount || 0)
   const price = cryptoPrices.value[currency] || 0
   return price * parseFloat(amount || 0)
 }
@@ -627,48 +631,6 @@ const renderCandlestickChart = async (symbol) => {
   } finally {
     loadingChart.value = false
   }
-}
-
-const getDaysFromPeriod = (period) => {
-  switch (period) {
-    case '1d': return 1
-    case '1w': return 7
-    case '1m': return 30
-    case '1y': return 365
-    case 'all': return 'max'
-    default: return 30
-  }
-}
-
-const generateMockCandleData = (count) => {
-  const data = []
-  let basePrice = selectedCandlestickChartTab.value === 'BTC' ? 45000 : 2500
-  let currentPrice = basePrice
-
-  for (let i = 0; i < count; i++) {
-    const date = new Date()
-    date.setDate(date.getDate() - (count - i))
-
-    const open = currentPrice
-    const change = (Math.random() - 0.5) * basePrice * 0.05
-    const close = open + change
-    const high = Math.max(open, close) + Math.random() * basePrice * 0.02
-    const low = Math.min(open, close) - Math.random() * basePrice * 0.02
-    const volume = Math.random() * 1000000 + 500000
-
-    data.push([
-      date.toLocaleDateString(),
-      Number(open.toFixed(2)),
-      Number(close.toFixed(2)),
-      Number(high.toFixed(2)),
-      Number(low.toFixed(2)),
-      Number(volume.toFixed(0))
-    ])
-
-    currentPrice = close
-  }
-
-  return data
 }
 
 // Update current prices for chart using market data service

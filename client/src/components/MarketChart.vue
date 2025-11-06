@@ -62,15 +62,15 @@ const props = defineProps({
   }
 })
 
-const selectedSymbol = ref('BTC/USD')
+const selectedSymbol = ref('BTC/USDT')
 const marketData = ref({})
 const unsubscribeMarketData = ref(null)
 
 const availableSymbols = computed(() => {
   if (props.instruments.length > 0) {
     return props.instruments.map(i => i.symbol)
-  }
-  return ['BTC/USD', 'ETH/USD', 'SOL/USD']
+    }
+    return ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
 })
 
 const currentData = computed(() => {

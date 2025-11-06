@@ -453,12 +453,20 @@ export const placeOrder = async (req, res) => {
         }
       }
 
-      // Balance checking for BUY orders
+      if (typeCode === ORDER_TYPES.MARKET) {
+        const latestQuote = await tx.marketQuote.findFirst({
+          where: { instrumentId },
+          orderBy: { timestamp: 'desc' },
+        })
+        if (latestQuote && latestQuote.lastPrice) {
+          priceDecimal = toDecimal(latestQuote.lastPrice)
+        }
+      }
+
       if (sideCode === ORDER_SIDES.BUY) {
         const available = toDecimal(accountBalance.available)
 
         if (typeCode === ORDER_TYPES.LIMIT) {
-          // For limit orders, reserve the full amount
           const reserve = priceDecimal.mul(qtyDecimal)
           if (available.lt(reserve)) {
             throw new Error(`Insufficient available balance. Required: ${reserve.toString()}, Available: ${available.toString()}`)
@@ -474,8 +482,6 @@ export const placeOrder = async (req, res) => {
             },
           })
         } else if (typeCode === ORDER_TYPES.MARKET) {
-          // For market orders, we'll check funds during matching
-          // but ensure some balance exists
           if (available.lte(0)) {
             throw new Error('Insufficient balance for market order')
           }

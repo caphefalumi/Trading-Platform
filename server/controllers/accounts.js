@@ -148,6 +148,18 @@ export const depositFunds = async (req, res) => {
         throw new Error('Account not found')
       }
 
+      // Enforce deposits only in USDT
+      const requestedCurrencyCode = currencyCode ? currencyCode.toUpperCase() : null
+      const accountBaseCurrencyCode = account.baseCurrency?.code?.toUpperCase()
+      if (requestedCurrencyCode) {
+        if (requestedCurrencyCode !== 'USDT') {
+          throw new Error('Deposits are allowed only in USDT')
+        }
+      } else if (accountBaseCurrencyCode && accountBaseCurrencyCode !== 'USDT') {
+        // If no currencyCode provided, require the account base currency to be USDT
+        throw new Error('Deposits are allowed only in USDT')
+      }
+
       // Use provided currency or default to account's base currency
       let currencyId = account.baseCurrencyId
       if (currencyCode) {
@@ -202,7 +214,7 @@ export const depositFunds = async (req, res) => {
           entryTypeId: ledgerTypeId,
           amount: depositAmount,
           referenceTable: 'account_balances',
-          referenceId: balance.id,
+          referenceId: updatedBalance.id,
         },
       })
 
@@ -216,6 +228,8 @@ export const depositFunds = async (req, res) => {
       })
 
       return {
+        // include the currencyId so callers (client/UI) know which currency this balance refers to
+        currencyId,
         available: formatDecimal(updatedBalance.available),
         reserved: formatDecimal(updatedBalance.reserved),
         total: formatDecimal(updatedBalance.total),
@@ -345,6 +359,17 @@ export const demoCreditFunds = async (req, res) => {
 
       if (!account) {
         throw new Error('Account not found')
+      }
+
+      // Enforce demo credits only in USDT (keep demo flow aligned with deposit policy)
+      const requestedCurrencyCode = currencyCode ? currencyCode.toUpperCase() : null
+      const accountBaseCurrencyCode = account.baseCurrency?.code?.toUpperCase()
+      if (requestedCurrencyCode) {
+        if (requestedCurrencyCode !== 'USDT') {
+          throw new Error('Demo credits are allowed only in USDT')
+        }
+      } else if (accountBaseCurrencyCode && accountBaseCurrencyCode !== 'USDT') {
+        throw new Error('Demo credits are allowed only in USDT')
       }
 
       // Resolve currency for the demo credit. Prefer provided currencyCode, otherwise account base currency.

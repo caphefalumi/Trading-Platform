@@ -13,7 +13,7 @@
       </div>
 
       <div class="chart-info-header" v-if="currentCandleInfo">
-        <span class="info-pair">{{ currentCandleInfo.symbol }} / U.S. Dollar</span>
+  <span class="info-pair">{{ currentCandleInfo.symbol }} / USDT</span>
 
         <!-- Time Period Selector -->
         <div class="time-period-selector">
@@ -80,7 +80,7 @@
             <tr>
               <th>Symbol</th>
               <th>Name</th>
-              <th>Price (USD)</th>
+              <th>Price (USDT)</th>
               <th>24h Change</th>
               <th>24h Volume</th>
               <th>Last Updated</th>

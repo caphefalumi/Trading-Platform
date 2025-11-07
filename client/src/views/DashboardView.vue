@@ -137,6 +137,7 @@
               <th>Reserved</th>
               <th>Total</th>
               <th>USDT Value</th>
+              <th>% of Portfolio</th>
             </tr>
           </thead>
           <tbody>
@@ -151,6 +152,9 @@
               <td>{{ formatNumber(balance.reserved, 8) }}</td>
               <td class="font-bold">{{ formatNumber(balance.total, 8) }}</td>
               <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }} USDT</td>
+              <td>
+                {{ totalAccountValue > 0 ? formatNumber((getUSDValue(balance.currency, balance.total) / totalAccountValue) * 100, 2) : '0.00' }}%
+              </td>
             </tr>
           </tbody>
         </table>
@@ -189,18 +193,22 @@
       </div>
 
       <!-- Portfolio Summary -->
-      <div v-if="portfolioSummary || totalAccountValue > 0" class="portfolio-summary">
+      <div v-if="totalAccountValue > 0" class="portfolio-summary">
         <div class="summary-item">
           <span class="label">Cash Available:</span>
-           <span class="value">{{ formatCurrency(portfolioSummary?.cashAvailable || 0) }} USDT</span>
+           <span class="value">{{ formatCurrency(getUSDTTotals().available) }} USDT</span>
         </div>
-        <div v-if="portfolioSummary?.portfolioValue" class="summary-item">
+        <div v-if="getComputedPortfolioValue() > 0" class="summary-item">
           <span class="label">Positions Value:</span>
-           <span class="value">{{ formatCurrency(portfolioSummary.portfolioValue) }} USDT</span>
+           <span class="value">{{ formatCurrency(getComputedPortfolioValue()) }} USDT</span>
         </div>
         <div class="summary-item">
           <span class="label">Total Account Value:</span>
            <span class="value total-highlight">{{ formatCurrency(totalAccountValue) }} USDT</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Cash Reserved:</span>
+          <span class="value">{{ formatCurrency(getUSDTTotals().reserved) }} USDT</span>
         </div>
       </div>
     </div>
@@ -355,6 +363,24 @@ const formatCurrency = (value) => {
   })
 }
 
+const getComputedCashBalance = () => {
+  // Prefer USDT balance if present; otherwise fall back to server-provided portfolioSummary
+  const usdtBal = balances.value.find(b => b.currency === 'USDT')
+  if (usdtBal) return {
+    available: parseFloat(usdtBal.available || 0),
+    reserved: parseFloat(usdtBal.reserved || 0),
+    total: parseFloat(usdtBal.total || 0)
+  }
+  if (portfolioSummary.value) {
+    return {
+      available: portfolioSummary.value.cashAvailable || 0,
+      reserved: portfolioSummary.value.cashReserved || 0,
+      total: (portfolioSummary.value.cashAvailable || 0) + (portfolioSummary.value.cashReserved || 0)
+    }
+  }
+  return { available: 0, reserved: 0, total: 0 }
+}
+
 const formatChangePercent = (value) => {
   const num = Number(value)
   return num >= 0 ? `+${num.toFixed(2)}%` : `${num.toFixed(2)}%`
@@ -375,6 +401,28 @@ const getCurrencyName = (code) => {
     USDT: 'Tether (USDT)'
   }
   return names[code] || code
+}
+
+const getUSDTTotals = () => {
+  const usdt = balances.value.find(b => b.currency === 'USDT')
+  if (usdt) return {
+    available: parseFloat(usdt.available || 0),
+    reserved: parseFloat(usdt.reserved || 0),
+    total: parseFloat(usdt.total || 0),
+    usdValue: getUSDValue('USDT', usdt.total)
+  }
+  return { available: 0, reserved: 0, total: 0, usdValue: 0 }
+}
+
+const getComputedPortfolioValue = () => {
+  // sum of all non-USDT holdings in USD value
+  let val = 0
+  balances.value.forEach(b => {
+    if (b.currency !== 'USDT') {
+      val += getUSDValue(b.currency, b.total)
+    }
+  })
+  return val
 }
 
 const getUSDValue = (currency, amount) => {

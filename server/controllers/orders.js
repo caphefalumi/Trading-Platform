@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import prisma from '../utils/prisma.js'
+import matchingEngine from '../engine/matching_engine.js'
 
 const ORDER_SIDES = {
   BUY: 'BUY',
@@ -64,9 +65,16 @@ const updateMarketQuote = async (tx, instrumentId, price, quantity) => {
 const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, references }) => {
   const fillValue = tradePrice.mul(fillQty)
 
-  const buyerBalance = await tx.accountBalance.findUnique({ where: { accountId: order.accountId } })
+  const buyerBalance = await tx.accountBalance.findUnique({
+    where: {
+      accountId_currencyId: {
+        accountId: order.accountId,
+        currencyId: order.instrument.currencyId,
+      },
+    },
+  })
   if (!buyerBalance) {
-    throw new Error('Buyer balance not found')
+    throw new Error('Buyer balance not found for instrument currency')
   }
 
   const available = toDecimal(buyerBalance.available)
@@ -94,7 +102,7 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
   const newTotal = newAvailable.add(newReserved)
 
   await tx.accountBalance.update({
-    where: { accountId: order.accountId },
+    where: { id: buyerBalance.id },
     data: {
       available: newAvailable,
       reserved: newReserved,
@@ -158,10 +166,15 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
 const applySellFill = async (tx, { order, fillQty, tradePrice }) => {
   const fillValue = tradePrice.mul(fillQty)
   const sellerBalance = await tx.accountBalance.findUnique({
-    where: { accountId: order.accountId },
+    where: {
+      accountId_currencyId: {
+        accountId: order.accountId,
+        currencyId: order.instrument.currencyId,
+      },
+    },
   })
   if (!sellerBalance) {
-    throw new Error('Seller balance not found')
+    throw new Error('Seller balance not found for instrument currency')
   }
 
   const available = toDecimal(sellerBalance.available).add(fillValue)
@@ -169,7 +182,7 @@ const applySellFill = async (tx, { order, fillQty, tradePrice }) => {
   const total = available.add(reserved)
 
   await tx.accountBalance.update({
-    where: { accountId: order.accountId },
+    where: { id: sellerBalance.id },
     data: {
       available,
       reserved,
@@ -395,6 +408,11 @@ export const placeOrder = async (req, res) => {
         throw new Error('Account not found')
       }
 
+      // Verify requester owns the account
+      if (req.account && req.account.id !== accountId) {
+        throw new Error('Unauthorized: cannot place orders for another account')
+      }
+
       if (!instrument) {
         throw new Error('Instrument not found')
       }
@@ -520,58 +538,7 @@ export const placeOrder = async (req, res) => {
           instrument: true,
         },
       })
-
-      const matchResult = await matchOrder(tx, order, {
-        sideCode,
-        typeCode,
-        partialStatusId: partialStatus.id,
-        filledStatusId: filledStatus.id,
-        cancelledStatusId: cancelledStatus.id,
-      })
-
-      if (matchResult.fills.length === 0 && typeCode === ORDER_TYPES.MARKET) {
-        throw new Error('No liquidity available to execute market order')
-      }
-
-      if (matchResult.remaining.gt(0) && typeCode === ORDER_TYPES.MARKET) {
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            statusId: cancelledStatus.id,
-            remainingQuantity: new Prisma.Decimal(0),
-          },
-        })
-      }
-
-      if (matchResult.remaining.gt(0) && typeCode === ORDER_TYPES.LIMIT && tifCode === 'IOC') {
-        if (sideCode === ORDER_SIDES.BUY && priceDecimal) {
-          const balance = await tx.accountBalance.findUnique({ where: { accountId } })
-          if (balance) {
-            const available = toDecimal(balance.available)
-            const reserved = toDecimal(balance.reserved)
-            const releaseAmount = priceDecimal.mul(matchResult.remaining)
-            const newAvailable = available.add(releaseAmount)
-            const newReserved = reserved.sub(releaseAmount)
-            await tx.accountBalance.update({
-              where: { accountId },
-              data: {
-                available: newAvailable,
-                reserved: newReserved,
-                total: newAvailable.add(newReserved),
-              },
-            })
-          }
-        }
-
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            statusId: cancelledStatus.id,
-            remainingQuantity: new Prisma.Decimal(0),
-          },
-        })
-      }
-
+      // Return the created order; matching will be performed outside this DB transaction by the matching engine
       const updatedOrder = await tx.order.findUnique({
         where: { id: order.id },
         include: {
@@ -583,11 +550,61 @@ export const placeOrder = async (req, res) => {
 
       return {
         order: updatedOrder,
-        fills: matchResult.fills,
       }
     })
 
-    res.status(201).json(result)
+    // At this point the order is created and any necessary reservations have been applied.
+    // Run the centralized matching engine to attempt fills.
+    let matchResult
+    try {
+      matchResult = await matchingEngine.matchOrder(result.order)
+      console.log(`Matching engine completed for order ${result.order.id}. Executions: ${matchResult?.executions?.length || 0}`)
+      if (matchResult && matchResult.executions && matchResult.executions.length > 0) {
+        console.log('Matching executions:', matchResult.executions)
+      }
+    } catch (err) {
+      console.error('Matching engine error:', err)
+      // If matching engine fails, respond with created order but log the failure
+    }
+
+    // If order was a MARKET order and there were no fills, cancel it to mimic previous behavior
+    if (type && type.toUpperCase() === ORDER_TYPES.MARKET && matchResult && matchResult.executions && matchResult.executions.length === 0) {
+      try {
+        const cancelledStatus = await prisma.orderStatus.findUnique({ where: { code: ORDER_STATUSES.CANCELLED } })
+        await prisma.order.update({ where: { id: result.order.id }, data: { statusId: cancelledStatus.id } })
+      } catch (err) {
+        console.error('Failed to cancel market order after no liquidity:', err)
+      }
+      return res.status(400).json({ error: 'No liquidity available to execute market order' })
+    }
+
+    // Fetch the fresh order including executions to return to client
+    const freshOrder = await prisma.order.findUnique({
+      where: { id: result.order.id },
+      include: {
+        status: true,
+        side: true,
+        type: true,
+        instrument: true,
+        executions: {
+          select: {
+            id: true,
+            price: true,
+            quantity: true,
+            executedAt: true,
+          },
+        },
+      },
+    })
+
+    // Format fills for response
+    const fills = (matchResult && matchResult.executions) ? matchResult.executions.map(f => ({
+      counterOrderId: f.counterOrderId,
+      quantity: f.quantity,
+      price: f.price,
+    })) : []
+
+    res.status(201).json({ order: freshOrder, fills })
   } catch (error) {
     console.error('❌ Place Order Error:', {
       message: error.message,

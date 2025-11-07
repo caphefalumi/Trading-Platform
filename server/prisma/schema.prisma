@@ -16,6 +16,7 @@ model Currency {
   balances     AccountBalance[]
   baseAccounts Account[]        @relation("AccountBaseCurrency")
   instruments  Instrument[]
+  transactions Transaction[]
 
   @@map("currencies")
 }
@@ -246,6 +247,8 @@ model Transaction {
   txType      TransactionType   @relation(fields: [txTypeId], references: [id])
   statusId    Int               @map("status_id") @db.SmallInt
   status      TransactionStatus @relation(fields: [statusId], references: [id])
+  currencyId  String?           @map("currency_id")
+  currency    Currency?         @relation(fields: [currencyId], references: [id])
   amount      Decimal           @db.Decimal(18, 8)
   externalRef String?           @map("external_ref")
   createdAt   DateTime          @default(now()) @map("created_at")

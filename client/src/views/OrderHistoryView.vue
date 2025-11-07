@@ -47,75 +47,63 @@
             <th>Type</th>
             <th>Price</th>
             <th>Quantity</th>
-            <th>Filled</th>
+            <th>Remaining</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="order in orders" :key="order.id" :class="getOrderRowClass(order)">
-            <td class="time">{{ formatTime(order.createdAt) }}</td>
-            <td class="symbol">{{ order.symbol }}</td>
-            <td :class="['side', order.side.toLowerCase()]">
-              {{ order.side }}
-            </td>
-            <td>{{ order.type }}</td>
-            <td class="price">{{ formatPrice(order.price) }}</td>
-            <td>{{ formatQuantity(order.quantity) }}</td>
-            <td>
-              <span :class="getFilledClass(order)">
-                {{ formatQuantity(order.filledQuantity) }} / {{ formatQuantity(order.quantity) }}
-              </span>
-            </td>
-            <td>
-              <span :class="['status-badge', getStatusClass(order.status)]">
-                {{ order.status }}
-              </span>
-            </td>
-            <td class="actions">
-              <button
-                v-if="canCancel(order)"
-                @click="cancelOrder(order)"
-                class="btn-cancel"
-                :disabled="cancelling[order.id]"
-              >
-                {{ cancelling[order.id] ? 'Cancelling...' : 'Cancel' }}
-              </button>
-              <button
-                v-if="order.executions && order.executions.length > 0"
-                @click="toggleExecutions(order.id)"
-                class="btn-details"
-              >
-                {{ expandedOrders[order.id] ? 'Hide' : 'Show' }} Fills
-              </button>
-            </td>
-          </tr>
-          <!-- Execution Details Row -->
-          <tr v-if="expandedOrders[order.id]" v-for="order in orders" :key="`${order.id}-executions`" class="executions-row">
-            <td colspan="9">
-              <div class="executions-detail">
-                <h4>Executions ({{ order.executions.length }})</h4>
-                <table class="executions-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Price</th>
-                      <th>Quantity</th>
-                      <th>Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="exec in order.executions" :key="exec.id">
-                      <td>{{ formatTime(exec.executedAt) }}</td>
-                      <td>{{ formatPrice(exec.price) }}</td>
-                      <td>{{ formatQuantity(exec.quantity) }}</td>
-                      <td>{{ formatPrice(exec.price * exec.quantity) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </td>
-          </tr>
+          <template v-for="order in orders" :key="order.id">
+            <tr :class="getOrderRowClass(order)" v-if="!order.parentOrderId">
+              <td>{{ formatDate(order.createdAt) }}</td>
+              <td class="symbol">{{ order.instrument?.symbol || order.symbol || '-' }}</td>
+              <td :class="['side', order.side && order.side.toLowerCase()]">{{ order.side }}</td>
+              <td>{{ order.type }}</td>
+              <td>{{ order.price ? formatPrice(order.price) : 'Market' }}</td>
+              <td>{{ formatQuantity(order.quantity) }}</td>
+              <td>{{ formatQuantity(order.remainingQuantity) }}</td>
+              <td><span :class="getStatusClass(order.status)">{{ order.status }}</span></td>
+              <td class="actions">
+                <button class="btn-details" @click="toggleExecutions(order.id)">{{ expandedOrders[order.id] ? 'Hide' : 'Show' }} Fills</button>
+                <button class="btn-cancel" :disabled="!canCancel(order) || cancelling[order.id]" @click="cancelOrder(order)">{{ cancelling[order.id] ? 'Cancelling...' : 'Cancel' }}</button>
+              </td>
+            </tr>
+
+            <tr v-if="expandedOrders[order.id]" class="executions-row">
+              <td colspan="9">
+                <div class="executions-detail">
+                  <h4>Executions ({{ order.executions?.length || 0 }})</h4>
+
+                  <div v-if="order.executions && order.executions.length">
+                    <table class="executions-table">
+                      <thead>
+                        <tr>
+                          <th>Time</th>
+                          <th>Price</th>
+                          <th>Quantity</th>
+                          <th>Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="exec in order.executions" :key="exec.id">
+                          <td>{{ formatTime(exec.executedAt || exec.createdAt) }}</td>
+                          <td>{{ formatPrice(exec.price) }}</td>
+                          <td>{{ formatQuantity(exec.quantity) }}</td>
+                          <td>{{ formatPrice(exec.price * exec.quantity) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div v-else class="no-executions" style="color: #9ca3af; padding: 12px;">
+                    No fills for this order.
+                  </div>
+
+                </div>
+              </td>
+            </tr>
+
+          </template>
         </tbody>
       </table>
     </div>
@@ -152,6 +140,8 @@ const formatTime = (date) => {
     minute: '2-digit',
   })
 }
+
+const formatDate = formatTime
 
 const formatPrice = (price) => {
   if (!price) return 'Market'

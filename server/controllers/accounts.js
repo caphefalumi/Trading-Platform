@@ -25,6 +25,10 @@ export const listUserAccounts = async (req, res) => {
 export const getAccountSummary = async (req, res) => {
   const { accountId } = req.params
   try {
+    // Ensure authenticated user owns the account
+    if (req.account && req.account.id !== accountId) {
+      return res.status(403).json({ error: 'Forbidden: access to this account is denied' })
+    }
     // Get account and positions
     const account = await prisma.account.findUnique({
       where: { id: accountId },
@@ -148,6 +152,11 @@ export const depositFunds = async (req, res) => {
         throw new Error('Account not found')
       }
 
+      // Ensure authenticated user owns the account
+      if (req.account && req.account.id !== accountId) {
+        throw new Error('Unauthorized: cannot deposit to another account')
+      }
+
       // Enforce deposits only in USDT
       const requestedCurrencyCode = currencyCode ? currencyCode.toUpperCase() : null
       const accountBaseCurrencyCode = account.baseCurrency?.code?.toUpperCase()
@@ -224,6 +233,7 @@ export const depositFunds = async (req, res) => {
           txTypeId: txMeta.txTypeId,
           statusId: txMeta.statusId,
           amount: depositAmount,
+          currencyId: currencyId,
         },
       })
 
@@ -260,6 +270,11 @@ export const withdrawFunds = async (req, res) => {
 
       if (!account) {
         throw new Error('Account not found')
+      }
+
+      // Ensure authenticated user owns the account
+      if (req.account && req.account.id !== accountId) {
+        throw new Error('Unauthorized: cannot withdraw from another account')
       }
 
       // Use provided currency or default to account's base currency
@@ -325,6 +340,7 @@ export const withdrawFunds = async (req, res) => {
           txTypeId: txMeta.txTypeId,
           statusId: txMeta.statusId,
           amount: withdrawalAmount.neg(),
+          currencyId: currencyId,
         },
       })
 
@@ -359,6 +375,11 @@ export const demoCreditFunds = async (req, res) => {
 
       if (!account) {
         throw new Error('Account not found')
+      }
+
+      // Ensure authenticated user owns the account
+      if (req.account && req.account.id !== accountId) {
+        throw new Error('Unauthorized: cannot credit another account')
       }
 
       // Enforce demo credits only in USDT (keep demo flow aligned with deposit policy)
@@ -436,6 +457,7 @@ export const demoCreditFunds = async (req, res) => {
           txTypeId: txMeta.txTypeId,
           statusId: txMeta.statusId,
           amount: creditAmount,
+          currencyId: currencyId,
         },
       })
 
@@ -459,6 +481,10 @@ export const getAccountBalance = async (req, res) => {
   const { currencyCode } = req.query
 
   try {
+    // Ensure authenticated user owns the account
+    if (req.account && req.account.id !== accountId) {
+      return res.status(403).json({ error: 'Forbidden: access to this account is denied' })
+    }
     const account = await prisma.account.findUnique({
       where: { id: accountId },
       include: {

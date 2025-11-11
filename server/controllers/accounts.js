@@ -95,7 +95,7 @@ export const getAccountSummary = async (req, res) => {
         balance: {
           available: cashAvailable,
           reserved: 0,
-          total: cashAvailable,
+          total: cashAvailable, // calculated: available + reserved
         },
       },
       portfolio,
@@ -196,19 +196,16 @@ export const depositFunds = async (req, res) => {
             currencyId,
             available: 0,
             reserved: 0,
-            total: 0,
           },
         })
       }
 
       const newAvailable = toDecimal(balance.available).add(depositAmount)
-      const newTotal = toDecimal(balance.total).add(depositAmount)
 
       const updatedBalance = await tx.accountBalance.update({
         where: { id: balance.id },
         data: {
           available: newAvailable,
-          total: newTotal,
         },
       })
 
@@ -242,7 +239,7 @@ export const depositFunds = async (req, res) => {
         currencyId,
         available: formatDecimal(updatedBalance.available),
         reserved: formatDecimal(updatedBalance.reserved),
-        total: formatDecimal(updatedBalance.total),
+        total: formatDecimal(toDecimal(updatedBalance.available).add(toDecimal(updatedBalance.reserved))),
       }
     })
 
@@ -309,13 +306,11 @@ export const withdrawFunds = async (req, res) => {
       }
 
       const newAvailable = currentAvailable.sub(withdrawalAmount)
-      const newTotal = toDecimal(balance.total).sub(withdrawalAmount)
 
       const updatedBalance = await tx.accountBalance.update({
         where: { id: balance.id },
         data: {
           available: newAvailable,
-          total: newTotal,
         },
       })
 
@@ -347,7 +342,7 @@ export const withdrawFunds = async (req, res) => {
       return {
         available: formatDecimal(updatedBalance.available),
         reserved: formatDecimal(updatedBalance.reserved),
-        total: formatDecimal(updatedBalance.total),
+        total: formatDecimal(toDecimal(updatedBalance.available).add(toDecimal(updatedBalance.reserved))),
       }
     })
 
@@ -420,19 +415,16 @@ export const demoCreditFunds = async (req, res) => {
             currencyId,
             available: 0,
             reserved: 0,
-            total: 0,
           },
         })
       }
 
       const newAvailable = toDecimal(balance.available).add(creditAmount)
-      const newTotal = toDecimal(balance.total).add(creditAmount)
 
       const updatedBalance = await tx.accountBalance.update({
         where: { id: balance.id },
         data: {
           available: newAvailable,
-          total: newTotal,
         },
       })
 
@@ -465,7 +457,7 @@ export const demoCreditFunds = async (req, res) => {
         currencyId,
         available: formatDecimal(updatedBalance.available),
         reserved: formatDecimal(updatedBalance.reserved),
-        total: formatDecimal(updatedBalance.total),
+        total: formatDecimal(toDecimal(updatedBalance.available).add(toDecimal(updatedBalance.reserved))),
       }
     })
 
@@ -509,14 +501,14 @@ export const getAccountBalance = async (req, res) => {
           currency: currencyCode,
           available: 0,
           reserved: 0,
-          total: 0,
+          total: 0, // calculated field
         })
       }
       return res.json({
         currency: balance.currency.code,
         available: formatDecimal(balance.available),
         reserved: formatDecimal(balance.reserved),
-        total: formatDecimal(balance.total),
+        total: formatDecimal(toDecimal(balance.available).add(toDecimal(balance.reserved))),
       })
     }
 
@@ -526,7 +518,7 @@ export const getAccountBalance = async (req, res) => {
       currencySymbol: b.currency.symbol,
       available: formatDecimal(b.available),
       reserved: formatDecimal(b.reserved),
-      total: formatDecimal(b.total),
+      total: formatDecimal(toDecimal(b.available).add(toDecimal(b.reserved))),
     }))
 
     res.json({

@@ -68,8 +68,8 @@
             </td>
             <td>{{ formatNumber(balance.available, 8) }}</td>
             <td>{{ formatNumber(balance.reserved, 8) }}</td>
-            <td class="font-bold">{{ formatNumber(balance.total, 8) }}</td>
-            <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }} USDT</td>
+            <td class="font-bold">{{ formatNumber(parseFloat(balance.available) + parseFloat(balance.reserved), 8) }}</td>
+            <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, parseFloat(balance.available) + parseFloat(balance.reserved))) }} USDT</td>
             <td>
               <div class="percentage-bar">
                 <div class="bar" :style="{ width: getPercentage(balance) + '%' }"></div>
@@ -162,7 +162,8 @@ const cryptoPrices = ref({
 const totalAccountValue = computed(() => {
   let total = 0
   balances.value.forEach(balance => {
-    const usdValue = getUSDValue(balance.currency, balance.total)
+    const balanceTotal = parseFloat(balance.available || 0) + parseFloat(balance.reserved || 0)
+    const usdValue = getUSDValue(balance.currency, balanceTotal)
     total += usdValue
   })
   return total
@@ -221,7 +222,8 @@ const getUSDValue = (currency, amount) => {
 
 const getPercentage = (balance) => {
   if (totalAccountValue.value === 0) return 0
-  const usdValue = getUSDValue(balance.currency, balance.total)
+  const balanceTotal = parseFloat(balance.available || 0) + parseFloat(balance.reserved || 0)
+  const usdValue = getUSDValue(balance.currency, balanceTotal)
   return (usdValue / totalAccountValue.value) * 100
 }
 

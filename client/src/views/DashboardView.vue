@@ -103,9 +103,9 @@
               <div class="currency-code">{{ balance.currency }}</div>
             </div>
           </div>
-            <div class="balance-amount">{{ formatNumber(balance.total, 8) }} {{ balance.currency }}</div>
-          <div class="balance-usd-value" v-if="getUSDValue(balance.currency, balance.total) > 0">
-            ≈ ${{ formatNumber(getUSDValue(balance.currency, balance.total), 2) }} USDT
+            <div class="balance-amount">{{ formatNumber(parseFloat(balance.available) + parseFloat(balance.reserved), 8) }} {{ balance.currency }}</div>
+          <div class="balance-usd-value" v-if="getUSDValue(balance.currency, parseFloat(balance.available) + parseFloat(balance.reserved)) > 0">
+            ≈ ${{ formatNumber(getUSDValue(balance.currency, parseFloat(balance.available) + parseFloat(balance.reserved)), 2) }} USDT
           </div>
           <div class="balance-details">
             <span>Available: {{ formatNumber(balance.available, 8) }}</span>
@@ -150,10 +150,10 @@
               </td>
               <td>{{ formatNumber(balance.available, 8) }}</td>
               <td>{{ formatNumber(balance.reserved, 8) }}</td>
-              <td class="font-bold">{{ formatNumber(balance.total, 8) }}</td>
-              <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, balance.total)) }} USDT</td>
+              <td class="font-bold">{{ formatNumber(parseFloat(balance.available) + parseFloat(balance.reserved), 8) }}</td>
+              <td class="usd-value">{{ formatCurrency(getUSDValue(balance.currency, parseFloat(balance.available) + parseFloat(balance.reserved))) }} USDT</td>
               <td>
-                {{ totalAccountValue > 0 ? formatNumber((getUSDValue(balance.currency, balance.total) / totalAccountValue) * 100, 2) : '0.00' }}%
+                {{ totalAccountValue > 0 ? formatNumber((getUSDValue(balance.currency, parseFloat(balance.available) + parseFloat(balance.reserved)) / totalAccountValue) * 100, 2) : '0.00' }}%
               </td>
             </tr>
           </tbody>
@@ -369,7 +369,7 @@ const getComputedCashBalance = () => {
   if (usdtBal) return {
     available: parseFloat(usdtBal.available || 0),
     reserved: parseFloat(usdtBal.reserved || 0),
-    total: parseFloat(usdtBal.total || 0)
+    total: parseFloat(usdtBal.available || 0) + parseFloat(usdtBal.reserved || 0)
   }
   if (portfolioSummary.value) {
     return {
@@ -405,11 +405,14 @@ const getCurrencyName = (code) => {
 
 const getUSDTTotals = () => {
   const usdt = balances.value.find(b => b.currency === 'USDT')
-  if (usdt) return {
-    available: parseFloat(usdt.available || 0),
-    reserved: parseFloat(usdt.reserved || 0),
-    total: parseFloat(usdt.total || 0),
-    usdValue: getUSDValue('USDT', usdt.total)
+  if (usdt) {
+    const total = parseFloat(usdt.available || 0) + parseFloat(usdt.reserved || 0)
+    return {
+      available: parseFloat(usdt.available || 0),
+      reserved: parseFloat(usdt.reserved || 0),
+      total: total,
+      usdValue: getUSDValue('USDT', total)
+    }
   }
   return { available: 0, reserved: 0, total: 0, usdValue: 0 }
 }
@@ -419,7 +422,8 @@ const getComputedPortfolioValue = () => {
   let val = 0
   balances.value.forEach(b => {
     if (b.currency !== 'USDT') {
-      val += getUSDValue(b.currency, b.total)
+      const total = parseFloat(b.available || 0) + parseFloat(b.reserved || 0)
+      val += getUSDValue(b.currency, total)
     }
   })
   return val

@@ -1,5 +1,12 @@
 import prisma from '../utils/prisma.js'
 
+const ORDER_STATUSES = {
+  OPEN: 'OPEN',
+  PARTIAL: 'PARTIALLY_FILLED',
+  FILLED: 'FILLED',
+  CANCELLED: 'CANCELLED',
+}
+
 class Order {
     constructor({ id, instrument, side, price, quantity }) {
         this.id = id;
@@ -140,6 +147,7 @@ class MatchingEngine {
                 price: orderData.price,
                 quantity: quantityStr,
                 filledQuantity: '0',
+                remainingQuantity: quantityStr,
             }
         })
 
@@ -152,7 +160,7 @@ class MatchingEngine {
             where: {
                 instrumentId: orderData.instrumentId,
                 sideId: oppositeSideId,
-                status: { code: 'PENDING' },
+                status: { code: { in: [ORDER_STATUSES.OPEN, ORDER_STATUSES.PARTIAL] } },
                 price: priceCondition,
                 remainingQuantity: { gt: '0' },
             },
@@ -177,23 +185,30 @@ class MatchingEngine {
             })
             trades.push(execution)
             // 4. Update both orders
+            const newMatchFilled = parseFloat(match.filledQuantity || '0') + tradeQty
+            const newMatchRemaining = parseFloat(match.quantity) - newMatchFilled
+            const matchStatusId = newMatchRemaining <= 0 ? 3 : 2 // 3=FILLED, 2=PARTIALLY_FILLED
+            
             await prisma.order.update({
                 where: { id: match.id },
                 data: {
-                    filledQuantity: { increment: tradeQty },
-                    remainingQuantity: { decrement: tradeQty },
-                    statusId: tradeQty === matchQty ? 3 : 2 // 3=FILLED, 2=PARTIALLY_FILLED
+                    filledQuantity: newMatchFilled.toString(),
+                    remainingQuantity: newMatchRemaining.toString(),
+                    statusId: matchStatusId
                 }
             })
             remainingQty -= tradeQty
         }
         // 5. Update new order
+        const newOrderFilled = parseFloat(quantityStr) - remainingQty
+        const newOrderStatusId = remainingQty === 0 ? 3 : (remainingQty < parseFloat(quantityStr) ? 2 : 1) // 3=FILLED, 2=PARTIALLY_FILLED, 1=OPEN
+        
         await prisma.order.update({
             where: { id: newOrder.id },
             data: {
-                filledQuantity: (parseFloat(quantityStr) - remainingQty).toString(),
+                filledQuantity: newOrderFilled.toString(),
                 remainingQuantity: remainingQty.toString(),
-                statusId: remainingQty === 0 ? 3 : (remainingQty < parseFloat(quantityStr) ? 2 : 1) // 3=FILLED, 2=PARTIALLY_FILLED, 1=PENDING
+                statusId: newOrderStatusId
             }
         })
         return trades

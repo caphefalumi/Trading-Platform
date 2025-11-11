@@ -112,7 +112,7 @@
               <span class="symbol">{{ position.symbol }}</span>
               <span class="name">{{ position.name }}</span>
             </td>
-            <td>{{ formatNumber(position.quantity, 8) }}</td>
+            <td>{{ formatCryptoQuantity(position.quantity) }}</td>
             <td>{{ formatCurrency(position.averagePrice) }}</td>
             <td>{{ formatCurrency(position.markPrice) }}</td>
             <td class="font-bold">{{ formatCurrency(position.marketValue) }}</td>
@@ -172,6 +172,22 @@ const formatNumber = (value, decimals = 2) => {
   return Number(value).toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals
+  })
+}
+
+const formatCryptoQuantity = (value) => {
+  const num = Number(value)
+  // If very small (< 0.01), show up to 8 decimals
+  if (num > 0 && num < 0.01) {
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 8
+    })
+  }
+  // Otherwise show up to 4 decimals
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4
   })
 }
 

@@ -34,7 +34,7 @@ const getOppositeSide = (side) => (side === ORDER_SIDES.BUY ? ORDER_SIDES.SELL :
 
 const recordLedgerEntry = async (
   tx,
-  { accountId, amount, currencyId, entryTypeCode, referenceId },
+  { accountId, amount, entryTypeCode, referenceId },
 ) => {
   const entryType = await fetchReference(tx, 'ledgerEntryType', entryTypeCode)
   await tx.ledgerEntry.create({
@@ -42,7 +42,6 @@ const recordLedgerEntry = async (
       accountId,
       entryTypeId: entryType.id,
       amount,
-      currencyId,
       referenceId,
       referenceTable: 'orders',
     },
@@ -149,7 +148,6 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
   await recordLedgerEntry(tx, {
     accountId: order.accountId,
     amount: fillValue.neg(),
-    currencyId: order.instrument.currencyId,
     entryTypeCode: 'TRADE_FILL',
     referenceId: order.id,
   })
@@ -157,7 +155,6 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
   await recordLedgerEntry(tx, {
     accountId: counterOrder.accountId,
     amount: fillValue,
-    currencyId: order.instrument.currencyId,
     entryTypeCode: 'TRADE_FILL',
     referenceId: counterOrder.id,
   })
@@ -241,8 +238,11 @@ const matchOrder = async (tx, orderRecord, references) => {
     const counterOrder = await tx.order.findFirst({
       where: {
         instrumentId: orderRecord.instrumentId,
-        status: { code: ORDER_STATUSES.OPEN },
+        status: { code: { in: [ORDER_STATUSES.OPEN, ORDER_STATUSES.PARTIAL] } },
         side: { code: getOppositeSide(references.sideCode) },
+        NOT: {
+          accountId: orderRecord.accountId, // Prevent self-trading
+        },
       },
       include: {
         account: true,
@@ -346,7 +346,6 @@ const matchOrder = async (tx, orderRecord, references) => {
     await tx.execution.create({
       data: {
         orderId: orderRecord.id,
-        instrumentId: orderRecord.instrumentId,
         counterpartyOrderId: counterOrder.id,
         price: tradePriceDecimal,
         quantity: fillQty,
@@ -356,7 +355,6 @@ const matchOrder = async (tx, orderRecord, references) => {
     await tx.execution.create({
       data: {
         orderId: counterOrder.id,
-        instrumentId: counterOrder.instrumentId,
         counterpartyOrderId: orderRecord.id,
         price: tradePriceDecimal,
         quantity: fillQty,
@@ -385,8 +383,15 @@ export const placeOrder = async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' })
   }
 
+  const startTime = Date.now()
+
   try {
+    console.log(`📝 Placing order: ${side} ${quantity} @ ${price || 'MARKET'}`)
+
+    // Increase transaction timeout to 15 seconds for complex operations
     const result = await prisma.$transaction(async (tx) => {
+      const txStart = Date.now()
+
       const [account, instrument] = await Promise.all([
         tx.account.findUnique({
           where: { id: accountId },
@@ -403,6 +408,7 @@ export const placeOrder = async (req, res) => {
           include: { currency: true }
         }),
       ])
+      console.log(`⏱️  Account/Instrument fetch: ${Date.now() - txStart}ms`)
 
       if (!account) {
         throw new Error('Account not found')
@@ -454,6 +460,7 @@ export const placeOrder = async (req, res) => {
           fetchReference(tx, 'orderStatus', ORDER_STATUSES.FILLED),
           fetchReference(tx, 'orderStatus', ORDER_STATUSES.CANCELLED),
         ])
+      console.log(`⏱️  Reference data fetch: ${Date.now() - txStart}ms`)
 
       const qtyDecimal = toDecimal(quantity)
       if (qtyDecimal.lte(0)) {
@@ -551,24 +558,51 @@ export const placeOrder = async (req, res) => {
       return {
         order: updatedOrder,
       }
+    }, {
+      maxWait: 10000, // Maximum time to wait to get a transaction slot (10s)
+      timeout: 15000, // Maximum time the transaction can run (15s)
     })
 
-    // At this point the order is created and any necessary reservations have been applied.
-    // Run the centralized matching engine to attempt fills.
+    console.log(`⏱️  Order creation transaction: ${Date.now() - startTime}ms`)
+
     let matchResult
     try {
-      matchResult = await matchingEngine.matchOrder(result.order)
-      console.log(`Matching engine completed for order ${result.order.id}. Executions: ${matchResult?.executions?.length || 0}`)
-      if (matchResult && matchResult.executions && matchResult.executions.length > 0) {
-        console.log('Matching executions:', matchResult.executions)
+      // Matching can also take time if there are many orders to match
+      matchResult = await prisma.$transaction(async (tx) => {
+        const orderRecord = await tx.order.findUnique({
+          where: { id: result.order.id },
+          include: { side: true, type: true, status: true, instrument: true },
+        })
+
+        if (!orderRecord) throw new Error('Order not found for matching')
+
+        const partialStatus = await tx.orderStatus.findUnique({ where: { code: ORDER_STATUSES.PARTIAL } })
+        const filledStatus = await tx.orderStatus.findUnique({ where: { code: ORDER_STATUSES.FILLED } })
+
+        const references = {
+          sideCode: orderRecord.side.code,
+          typeCode: orderRecord.type.code,
+          partialStatusId: partialStatus.id,
+          filledStatusId: filledStatus.id,
+        }
+
+        return await matchOrder(tx, orderRecord, references)
+      }, {
+        maxWait: 10000, // Maximum time to wait to get a transaction slot (10s)
+        timeout: 20000, // Maximum time the transaction can run (20s for matching)
+      })
+
+      console.log(`Matching engine completed for order ${result.order.id}. Executions: ${matchResult?.fills?.length || 0}`)
+      if (matchResult && matchResult.fills && matchResult.fills.length > 0) {
+        console.log('Matching executions:', matchResult.fills)
       }
+      console.log(`⏱️  Matching transaction: ${Date.now() - startTime}ms`)
     } catch (err) {
       console.error('Matching engine error:', err)
-      // If matching engine fails, respond with created order but log the failure
     }
 
     // If order was a MARKET order and there were no fills, cancel it to mimic previous behavior
-    if (type && type.toUpperCase() === ORDER_TYPES.MARKET && matchResult && matchResult.executions && matchResult.executions.length === 0) {
+    if (type && type.toUpperCase() === ORDER_TYPES.MARKET && matchResult && matchResult.fills && matchResult.fills.length === 0) {
       try {
         const cancelledStatus = await prisma.orderStatus.findUnique({ where: { code: ORDER_STATUSES.CANCELLED } })
         await prisma.order.update({ where: { id: result.order.id }, data: { statusId: cancelledStatus.id } })
@@ -597,12 +631,8 @@ export const placeOrder = async (req, res) => {
       },
     })
 
-    // Format fills for response
-    const fills = (matchResult && matchResult.executions) ? matchResult.executions.map(f => ({
-      counterOrderId: f.counterOrderId,
-      quantity: f.quantity,
-      price: f.price,
-    })) : []
+    // Format fills for response - matchResult.fills contains the execution details
+    const fills = (matchResult && matchResult.fills) ? matchResult.fills : []
 
     res.status(201).json({ order: freshOrder, fills })
   } catch (error) {
@@ -800,7 +830,7 @@ export const cancelOrder = async (req, res) => {
 
         const balance = await tx.accountBalance.findUnique({
           where: {
-            account_balance_unique: {
+            accountId_currencyId: {
               accountId: order.accountId,
               currencyId: order.instrument.currencyId,
             },

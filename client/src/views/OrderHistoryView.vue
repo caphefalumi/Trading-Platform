@@ -38,74 +38,76 @@
         <p>No orders found</p>
         <p style="font-size: 0.875rem; color: #6b7280;">Place your first order in the Trade section to see it here.</p>
       </div>
-      <table v-else class="orders-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Symbol</th>
-            <th>Side</th>
-            <th>Type</th>
-            <th>Price</th>
-            <th>Quantity</th>
-            <th>Remaining</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-for="order in orders" :key="order.id">
-            <tr :class="getOrderRowClass(order)" v-if="!order.parentOrderId">
-              <td>{{ formatDate(order.createdAt) }}</td>
-              <td class="symbol">{{ order.instrument?.symbol || order.symbol || '-' }}</td>
-              <td :class="['side', order.side && order.side.toLowerCase()]">{{ order.side }}</td>
-              <td>{{ order.type }}</td>
-              <td>{{ order.price ? formatPrice(order.price) : 'Market' }}</td>
-              <td>{{ formatQuantity(order.quantity) }}</td>
-              <td>{{ formatQuantity(order.remainingQuantity) }}</td>
-              <td><span :class="getStatusClass(order.status)">{{ order.status }}</span></td>
-              <td class="actions">
-                <button class="btn-details" @click="toggleExecutions(order.id)">{{ expandedOrders[order.id] ? 'Hide' : 'Show' }} Fills</button>
-                <button class="btn-cancel" :disabled="!canCancel(order) || cancelling[order.id]" @click="cancelOrder(order)">{{ cancelling[order.id] ? 'Cancelling...' : 'Cancel' }}</button>
-              </td>
+      <div v-else class="table-container">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Type</th>
+              <th>Price</th>
+              <th>Quantity</th>
+              <th>Remaining</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
+          </thead>
+          <tbody>
+            <template v-for="order in orders" :key="order.id">
+              <tr :class="getOrderRowClass(order)" v-if="!order.parentOrderId">
+                <td class="nowrap">{{ formatDate(order.createdAt) }}</td>
+                <td class="symbol">{{ order.instrument?.symbol || order.symbol || '-' }}</td>
+                <td :class="['side', order.side && order.side.toLowerCase()]">{{ order.side }}</td>
+                <td>{{ order.type }}</td>
+                <td class="numeric">{{ order.price ? formatPrice(order.price) : 'Market' }}</td>
+                <td class="numeric">{{ formatQuantity(order.quantity) }}</td>
+                <td class="numeric">{{ formatQuantity(order.remainingQuantity) }}</td>
+                <td><span :class="getStatusClass(order.status)">{{ order.status }}</span></td>
+                <td class="actions">
+                  <button class="btn-details" @click="toggleExecutions(order.id)">{{ expandedOrders[order.id] ? 'Hide' : 'Show' }} Fills</button>
+                  <button class="btn-cancel" :disabled="!canCancel(order) || cancelling[order.id]" @click="cancelOrder(order)">{{ cancelling[order.id] ? 'Cancelling...' : 'Cancel' }}</button>
+                </td>
+              </tr>
 
-            <tr v-if="expandedOrders[order.id]" class="executions-row">
-              <td colspan="9">
-                <div class="executions-detail">
-                  <h4>Executions ({{ order.executions?.length || 0 }})</h4>
+              <tr v-if="expandedOrders[order.id]" class="executions-row">
+                <td colspan="9">
+                  <div class="executions-detail">
+                    <h4>Executions ({{ order.executions?.length || 0 }})</h4>
 
-                  <div v-if="order.executions && order.executions.length">
-                    <table class="executions-table">
-                      <thead>
-                        <tr>
-                          <th>Time</th>
-                          <th>Price</th>
-                          <th>Quantity</th>
-                          <th>Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="exec in order.executions" :key="exec.id">
-                          <td>{{ formatTime(exec.executedAt || exec.createdAt) }}</td>
-                          <td>{{ formatPrice(exec.price) }}</td>
-                          <td>{{ formatQuantity(exec.quantity) }}</td>
-                          <td>{{ formatPrice(exec.price * exec.quantity) }}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <div v-if="order.executions && order.executions.length">
+                      <table class="executions-table">
+                        <thead>
+                          <tr>
+                            <th>Time</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="exec in order.executions" :key="exec.id">
+                            <td>{{ formatTime(exec.executedAt || exec.createdAt) }}</td>
+                            <td>{{ formatPrice(exec.price) }}</td>
+                            <td>{{ formatQuantity(exec.quantity) }}</td>
+                            <td>{{ formatPrice(exec.price * exec.quantity) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div v-else class="no-executions" style="color: #9ca3af; padding: 12px;">
+                      No fills for this order.
+                    </div>
+
                   </div>
+                </td>
+              </tr>
 
-                  <div v-else class="no-executions" style="color: #9ca3af; padding: 12px;">
-                    No fills for this order.
-                  </div>
-
-                </div>
-              </td>
-            </tr>
-
-          </template>
-        </tbody>
-      </table>
+            </template>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Feedback Modal -->
@@ -348,9 +350,46 @@ h1 {
   color: #9ca3af;
 }
 
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-container {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(59, 130, 246, 0.6) rgba(15, 17, 23, 0.8); /* Firefox */
+  padding-bottom: 4px;
+}
+
+/* Custom scrollbar styling for Webkit browsers (Chrome, Safari, Edge) */
+.table-container::-webkit-scrollbar {
+  height: 12px; /* Make it more visible */
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: rgba(15, 17, 23, 0.8);
+  border-radius: 6px;
+  margin: 0 8px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.6);
+  border-radius: 6px;
+  border: 2px solid rgba(15, 17, 23, 0.8);
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.8);
+}
+
 .orders-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 1200px; /* Increased to ensure scrollbar is always needed */
 }
 
 .orders-table th,
@@ -358,6 +397,16 @@ h1 {
   padding: 12px;
   text-align: left;
   border-bottom: 1px solid #2d3142;
+  white-space: nowrap;
+}
+
+.orders-table td.nowrap {
+  white-space: nowrap;
+}
+
+.orders-table td.numeric {
+  text-align: right;
+  font-family: 'Courier New', monospace;
 }
 
 .orders-table thead {
@@ -454,6 +503,7 @@ h1 {
 .actions {
   display: flex;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .btn-cancel, .btn-details {
@@ -464,6 +514,7 @@ h1 {
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .btn-cancel {

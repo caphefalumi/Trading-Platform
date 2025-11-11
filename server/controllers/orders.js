@@ -98,14 +98,11 @@ const applyBuyFill = async (tx, { order, fillQty, tradePrice, counterOrder, refe
     newAvailable = available.sub(fillValue)
   }
 
-  const newTotal = newAvailable.add(newReserved)
-
   await tx.accountBalance.update({
     where: { id: buyerBalance.id },
     data: {
       available: newAvailable,
       reserved: newReserved,
-      total: newTotal,
     },
   })
 
@@ -433,7 +430,6 @@ export const placeOrder = async (req, res) => {
             currencyId: instrument.currencyId,
             available: 0,
             reserved: 0,
-            total: 0,
           },
         })
       }
@@ -503,7 +499,6 @@ export const placeOrder = async (req, res) => {
             data: {
               available: newAvailable,
               reserved: newReserved,
-              total: newAvailable.add(newReserved),
             },
           })
         } else if (typeCode === ORDER_TYPES.MARKET) {
@@ -846,7 +841,6 @@ export const cancelOrder = async (req, res) => {
             data: {
               reserved: newReserved.lt(0) ? new Prisma.Decimal(0) : newReserved,
               available: newAvailable,
-              total: toDecimal(balance.total),
             },
           })
         }

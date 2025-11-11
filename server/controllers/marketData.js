@@ -1,5 +1,4 @@
 // server/controllers/marketData.js
-import fetch from 'node-fetch';
 
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "82cb4252-7d07-41b1-8a3f-ba43a6356691";
 const CMC_BASE_URL = process.env.CMC_BASE_URL || "https://pro-api.coinmarketcap.com";

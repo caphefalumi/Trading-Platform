@@ -1,9 +1,5 @@
 import prisma from '../utils/prisma.js'
 
-const express = require('express');
-const app = express();
-app.use(express.json());
-
 class Order {
     constructor({ id, instrument, side, price, quantity }) {
         this.id = id;
@@ -174,7 +170,6 @@ class MatchingEngine {
             const execution = await prisma.execution.create({
                 data: {
                     orderId: newOrder.id,
-                    instrumentId: newOrder.instrumentId,
                     counterpartyOrderId: match.id,
                     price: match.price,
                     quantity: tradeQty.toString(),

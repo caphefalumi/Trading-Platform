@@ -109,7 +109,6 @@ model AccountBalance {
   currency   Currency @relation(fields: [currencyId], references: [id])
   available  Decimal  @default(0) @db.Decimal(18, 8)
   reserved   Decimal  @default(0) @db.Decimal(18, 8)
-  total      Decimal  @default(0) @db.Decimal(18, 8)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

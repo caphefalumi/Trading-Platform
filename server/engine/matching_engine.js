@@ -155,14 +155,11 @@ const updateBuyerBalance = async (tx, order, fillQty, tradePrice) => {
     newAvailable = available.sub(fillValue)
   }
 
-  const newTotal = newAvailable.add(newReserved)
-
   await tx.accountBalance.update({
     where: { id: balance.id },
     data: {
       available: newAvailable,
       reserved: newReserved,
-      total: newTotal,
     },
   })
 }
@@ -191,18 +188,15 @@ const updateSellerBalance = async (tx, order, fillQty, tradePrice) => {
         currencyId: order.instrument.currencyId,
         available: fillValue,
         reserved: 0,
-        total: fillValue,
       },
     })
   } else {
     const newAvailable = toDecimal(balance.available).add(fillValue)
-    const newTotal = toDecimal(balance.total).add(fillValue)
 
     await tx.accountBalance.update({
       where: { id: balance.id },
       data: {
         available: newAvailable,
-        total: newTotal,
       },
     })
   }

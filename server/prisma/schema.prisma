@@ -1,11 +1,11 @@
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Currency {
@@ -35,16 +35,17 @@ model Instrument {
   symbol       String        @unique
   name         String
   assetClassId String        @map("asset_class_id")
-  assetClass   AssetClass    @relation(fields: [assetClassId], references: [id])
   lotSize      Decimal       @map("lot_size") @db.Decimal(18, 8)
   tickSize     Decimal       @map("tick_size") @db.Decimal(18, 8)
   currencyId   String        @map("currency_id")
-  currency     Currency      @relation(fields: [currencyId], references: [id])
   createdAt    DateTime      @default(now()) @map("created_at")
-  orders       Order[]
-  positions    Position[]
+  assetClass   AssetClass    @relation(fields: [assetClassId], references: [id])
+  currency     Currency      @relation(fields: [currencyId], references: [id])
   marketQuotes MarketQuote[]
+  positions    Position[]
 
+  @@index([assetClassId], map: "instruments_asset_class_id_fkey")
+  @@index([currencyId], map: "instruments_currency_id_fkey")
   @@map("instruments")
 }
 
@@ -89,95 +90,106 @@ model Account {
   email          String           @unique
   password       String
   baseCurrencyId String           @map("base_currency_id")
-  baseCurrency   Currency         @relation("AccountBaseCurrency", fields: [baseCurrencyId], references: [id])
   createdAt      DateTime         @default(now()) @map("created_at")
+  balances       AccountBalance[]
+  baseCurrency   Currency         @relation("AccountBaseCurrency", fields: [baseCurrencyId], references: [id])
+  ledgerEntries  LedgerEntry[]
   orders         Order[]
   positions      Position[]
-  ledgerEntries  LedgerEntry[]
-  transactions   Transaction[]
-  balances       AccountBalance[]
   sessions       Session[]
+  transactions   Transaction[]
 
+  @@index([baseCurrencyId], map: "accounts_base_currency_id_fkey")
   @@map("accounts")
 }
 
 model AccountBalance {
   id         String   @id @default(uuid())
   accountId  String   @map("account_id")
-  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   currencyId String   @map("currency_id")
-  currency   Currency @relation(fields: [currencyId], references: [id])
-  available  Decimal  @default(0) @db.Decimal(18, 8)
-  reserved   Decimal  @default(0) @db.Decimal(18, 8)
+  available  Decimal  @default(0.00000000) @db.Decimal(18, 8)
+  reserved   Decimal  @default(0.00000000) @db.Decimal(18, 8)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  currency   Currency @relation(fields: [currencyId], references: [id])
 
   @@unique([accountId, currencyId], map: "account_balance_unique")
+  @@index([currencyId], map: "account_balances_currency_id_fkey")
   @@map("account_balances")
 }
 
 model Session {
   id        String   @id @default(uuid())
   accountId String   @map("account_id")
-  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   token     String   @unique
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([token])
+  @@index([accountId, expiresAt])
+  @@index([expiresAt])
   @@map("sessions")
 }
 
 model Order {
-  id             String           @id @default(uuid())
-  accountId      String           @map("account_id")
-  account        Account          @relation(fields: [accountId], references: [id])
-  instrumentId   String           @map("instrument_id")
-  instrument     Instrument       @relation(fields: [instrumentId], references: [id])
-  sideId         Int              @map("side_id") @db.SmallInt
-  side           OrderSide        @relation(fields: [sideId], references: [id])
-  typeId         Int              @map("type_id") @db.SmallInt
-  type           OrderType        @relation(fields: [typeId], references: [id])
-  statusId       Int              @map("status_id") @db.SmallInt
-  status         OrderStatus      @relation(fields: [statusId], references: [id])
-  timeInForceId  Int?             @map("time_in_force_id") @db.SmallInt
-  timeInForce    TimeInForceType? @relation(fields: [timeInForceId], references: [id])
+  id                String           @id @default(uuid())
+  accountId         String           @map("account_id")
+  instrumentId      String           @map("instrument_id")
+  sideId            Int              @map("side_id") @db.SmallInt
+  typeId            Int              @map("type_id") @db.SmallInt
+  statusId          Int              @map("status_id") @db.SmallInt
+  timeInForceId     Int?             @map("time_in_force_id") @db.SmallInt
   clientOrderId     String?          @unique @map("client_order_id")
   price             Decimal?         @db.Decimal(18, 8)
   quantity          Decimal          @db.Decimal(18, 8)
-  filledQuantity    Decimal          @default(0) @map("filled_quantity") @db.Decimal(18, 8)
-  remainingQuantity Decimal?         @map("remaining_quantity") @db.Decimal(18, 8)
+  filledQuantity    Decimal          @default(0.00000000) @map("filled_quantity") @db.Decimal(18, 8)
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
+  remainingQuantity Decimal?         @map("remaining_quantity") @db.Decimal(18, 8)
   executions        Execution[]
+  account           Account          @relation(fields: [accountId], references: [id])
+  side              OrderSide        @relation(fields: [sideId], references: [id])
+  status            OrderStatus      @relation(fields: [statusId], references: [id])
+  timeInForce       TimeInForceType? @relation(fields: [timeInForceId], references: [id])
+  type              OrderType        @relation(fields: [typeId], references: [id])
 
+  @@index([instrumentId, sideId, statusId, createdAt])
+  @@index([accountId, statusId])
+  @@index([sideId], map: "orders_side_id_fkey")
+  @@index([statusId], map: "orders_status_id_fkey")
+  @@index([timeInForceId], map: "orders_time_in_force_id_fkey")
+  @@index([typeId], map: "orders_type_id_fkey")
   @@map("orders")
 }
 
 model Execution {
   id                  String   @id @default(uuid())
   orderId             String   @map("order_id")
-  order               Order    @relation(fields: [orderId], references: [id])
   counterpartyOrderId String?  @map("counterparty_order_id")
   price               Decimal  @db.Decimal(18, 8)
   quantity            Decimal  @db.Decimal(18, 8)
   executedAt          DateTime @default(now()) @map("executed_at")
   liquidity           String?
+  order               Order    @relation(fields: [orderId], references: [id])
 
+  @@index([orderId])
   @@map("executions")
 }
 
 model Position {
   id           String     @id @default(uuid())
   accountId    String     @map("account_id")
-  account      Account    @relation(fields: [accountId], references: [id])
   instrumentId String     @map("instrument_id")
-  instrument   Instrument @relation(fields: [instrumentId], references: [id])
   quantity     Decimal    @db.Decimal(18, 8)
   averagePrice Decimal    @map("average_price") @db.Decimal(18, 8)
   updatedAt    DateTime   @updatedAt @map("updated_at")
+  account      Account    @relation(fields: [accountId], references: [id])
+  instrument   Instrument @relation(fields: [instrumentId], references: [id])
 
   @@unique([accountId, instrumentId], map: "positions_account_instrument_unique")
+  @@index([instrumentId], map: "positions_instrument_id_fkey")
   @@map("positions")
 }
 
@@ -194,28 +206,30 @@ model LedgerEntryType {
 model LedgerEntry {
   id             String          @id @default(uuid())
   accountId      String          @map("account_id")
-  account        Account         @relation(fields: [accountId], references: [id])
   entryTypeId    Int             @map("entry_type_id") @db.SmallInt
-  entryType      LedgerEntryType @relation(fields: [entryTypeId], references: [id])
   amount         Decimal         @db.Decimal(18, 8)
   referenceId    String?         @map("reference_id")
   referenceTable String?         @map("reference_table")
   createdAt      DateTime        @default(now()) @map("created_at")
+  account        Account         @relation(fields: [accountId], references: [id])
+  entryType      LedgerEntryType @relation(fields: [entryTypeId], references: [id])
 
+  @@index([accountId, createdAt])
+  @@index([entryTypeId], map: "ledger_entries_entry_type_id_fkey")
   @@map("ledger_entries")
 }
 
 model MarketQuote {
   id           BigInt     @id @default(autoincrement())
   instrumentId String     @map("instrument_id")
-  instrument   Instrument @relation(fields: [instrumentId], references: [id])
   bidPrice     Decimal?   @map("bid_price") @db.Decimal(18, 8)
   askPrice     Decimal?   @map("ask_price") @db.Decimal(18, 8)
   lastPrice    Decimal?   @map("last_price") @db.Decimal(18, 8)
   volume       Decimal?   @db.Decimal(18, 8)
   timestamp    DateTime   @map("ts")
+  instrument   Instrument @relation(fields: [instrumentId], references: [id])
 
-  @@unique([instrumentId, timestamp], map: "uq_market_quotes_instrument_ts")
+  @@unique([instrumentId, timestamp(sort: Desc)], map: "uq_market_quotes_instrument_ts")
   @@map("market_quotes")
 }
 
@@ -241,18 +255,23 @@ model TransactionStatus {
 model Transaction {
   id          String            @id @default(uuid())
   accountId   String            @map("account_id")
-  account     Account           @relation(fields: [accountId], references: [id])
   txTypeId    Int               @map("tx_type_id") @db.SmallInt
-  txType      TransactionType   @relation(fields: [txTypeId], references: [id])
   statusId    Int               @map("status_id") @db.SmallInt
-  status      TransactionStatus @relation(fields: [statusId], references: [id])
-  currencyId  String?           @map("currency_id")
-  currency    Currency?         @relation(fields: [currencyId], references: [id])
   amount      Decimal           @db.Decimal(18, 8)
   externalRef String?           @map("external_ref")
   createdAt   DateTime          @default(now()) @map("created_at")
   updatedAt   DateTime          @updatedAt @map("updated_at")
+  currencyId  String?           @map("currency_id")
+  account     Account           @relation(fields: [accountId], references: [id])
+  currency    Currency?         @relation(fields: [currencyId], references: [id])
+  status      TransactionStatus @relation(fields: [statusId], references: [id])
+  txType      TransactionType   @relation(fields: [txTypeId], references: [id])
 
+  @@index([accountId, statusId, txTypeId])
+  @@index([accountId, createdAt])
+  @@index([currencyId], map: "transactions_currency_id_fkey")
+  @@index([statusId], map: "transactions_status_id_fkey")
+  @@index([txTypeId], map: "transactions_tx_type_id_fkey")
   @@map("transactions")
 }
 
@@ -288,15 +307,19 @@ model AuditLog {
   id           String      @id @default(uuid())
   actorId      String?     @map("actor_id")
   actorTypeId  Int?        @map("actor_type_id") @db.SmallInt
-  actorType    ActorType?  @relation("ActorTypeToAuditLog", fields: [actorTypeId], references: [id])
   actionId     Int?        @map("action_id") @db.SmallInt
-  action       ActionType? @relation("ActionTypeToAuditLog", fields: [actionId], references: [id])
   objectTypeId Int?        @map("object_type_id") @db.SmallInt
-  objectType   ObjectType? @relation("ObjectTypeToAuditLog", fields: [objectTypeId], references: [id])
   objectId     String?     @map("object_id")
   oldValues    Json?       @map("old_values")
   newValues    Json?       @map("new_values")
   createdAt    DateTime    @default(now()) @map("created_at")
+  action       ActionType? @relation("ActionTypeToAuditLog", fields: [actionId], references: [id])
+  actorType    ActorType?  @relation("ActorTypeToAuditLog", fields: [actorTypeId], references: [id])
+  objectType   ObjectType? @relation("ObjectTypeToAuditLog", fields: [objectTypeId], references: [id])
 
+  @@index([actorId, createdAt])
+  @@index([actionId], map: "audit_log_action_id_fkey")
+  @@index([actorTypeId], map: "audit_log_actor_type_id_fkey")
+  @@index([objectTypeId], map: "audit_log_object_type_id_fkey")
   @@map("audit_log")
 }

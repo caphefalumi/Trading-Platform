@@ -8,286 +8,256 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Currency {
-  id           String           @id @default(uuid())
-  code         String           @unique
-  name         String
-  symbol       String
-  balances     AccountBalance[]
-  baseAccounts Account[]        @relation("AccountBaseCurrency")
-  instruments  Instrument[]
-  transactions Transaction[]
+model account_balances {
+  id          String     @id
+  account_id  String
+  currency_id String
+  available   Decimal    @default(0.00000000) @db.Decimal(18, 8)
+  reserved    Decimal    @default(0.00000000) @db.Decimal(18, 8)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime
+  accounts    accounts   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  currencies  currencies @relation(fields: [currency_id], references: [id])
 
-  @@map("currencies")
+  @@unique([account_id, currency_id], map: "account_balance_unique")
+  @@index([currency_id], map: "account_balances_currency_id_fkey")
 }
 
-model AssetClass {
-  id          String       @id @default(uuid())
-  name        String       @unique
+model accounts {
+  id               String             @id
+  email            String             @unique
+  password         String
+  base_currency_id String
+  created_at       DateTime           @default(now())
+  account_balances account_balances[]
+  currencies       currencies         @relation(fields: [base_currency_id], references: [id])
+  ledger_entries   ledger_entries[]
+  orders           orders[]
+  positions        positions[]
+  sessions         sessions[]
+  transactions     transactions[]
+
+  @@index([base_currency_id], map: "accounts_base_currency_id_fkey")
+}
+
+model asset_classes {
+  id          String        @id
+  name        String        @unique
   description String?
-  instruments Instrument[]
-
-  @@map("asset_classes")
+  instruments instruments[]
 }
 
-model OrderSide {
-  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String  @unique
+model currencies {
+  id               String             @id
+  code             String             @unique
+  name             String
+  symbol           String
+  account_balances account_balances[]
+  accounts         accounts[]
+  instruments      instruments[]
+  transactions     transactions[]
+}
+
+model executions {
+  id                    String   @id
+  order_id              String
+  counterparty_order_id String?
+  price                 Decimal  @db.Decimal(18, 8)
+  quantity              Decimal  @db.Decimal(18, 8)
+  executed_at           DateTime @default(now())
+  liquidity             String?
+  orders                orders   @relation(fields: [order_id], references: [id])
+
+  @@index([order_id])
+}
+
+model instruments {
+  id                 String              @id
+  symbol             String              @unique
+  name               String
+  asset_class_id     String
+  lot_size           Decimal             @db.Decimal(18, 8)
+  tick_size          Decimal             @db.Decimal(18, 8)
+  currency_id        String
+  created_at         DateTime            @default(now())
+  asset_classes      asset_classes       @relation(fields: [asset_class_id], references: [id])
+  currencies         currencies          @relation(fields: [currency_id], references: [id])
+  instrument_prices  instrument_prices[]
+  market_quotes      market_quotes[]
+  positions          positions[]
+
+  @@index([asset_class_id], map: "instruments_asset_class_id_fkey")
+  @@index([currency_id], map: "instruments_currency_id_fkey")
+}
+
+model instrument_prices {
+  id            BigInt      @id @default(autoincrement())
+  instrument_id String
+  timestamp     DateTime    @default(now())
+  price         Decimal     @db.Decimal(18, 8)
+  volume        Decimal?    @db.Decimal(18, 8)
+  bid_price     Decimal?    @db.Decimal(18, 8)
+  ask_price     Decimal?    @db.Decimal(18, 8)
+  source        String?
+  instruments   instruments @relation(fields: [instrument_id], references: [id], onDelete: Cascade)
+
+  @@unique([instrument_id, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
+  @@index([instrument_id, timestamp])
+}
+model ledger_entries {
+  id                 String             @id
+  account_id         String
+  entry_type_id      Int                @db.SmallInt
+  amount             Decimal            @db.Decimal(18, 8)
+  reference_id       String?
+  reference_table    String?
+  created_at         DateTime           @default(now())
+  accounts           accounts           @relation(fields: [account_id], references: [id])
+  ledger_entry_types ledger_entry_types @relation(fields: [entry_type_id], references: [id])
+
+  @@index([account_id, created_at])
+  @@index([entry_type_id], map: "ledger_entries_entry_type_id_fkey")
+}
+
+model ledger_entry_types {
+  id             Int              @id @default(autoincrement()) @db.SmallInt
+  code           String           @unique
+  description    String?
+  category       String?
+  ledger_entries ledger_entries[]
+}
+
+model market_quotes {
+  id            BigInt      @id @default(autoincrement())
+  instrument_id String
+  bid_price     Decimal?    @db.Decimal(18, 8)
+  ask_price     Decimal?    @db.Decimal(18, 8)
+  last_price    Decimal?    @db.Decimal(18, 8)
+  volume        Decimal?    @db.Decimal(18, 8)
+  ts            DateTime
+  instruments   instruments @relation(fields: [instrument_id], references: [id])
+
+  @@unique([instrument_id, ts(sort: Desc)], map: "uq_market_quotes_instrument_ts")
+}
+
+model order_sides {
+  id          Int      @id @default(autoincrement()) @db.SmallInt
+  code        String   @unique
   description String?
-  orders      Order[]
-
-  @@map("order_sides")
+  orders      orders[]
 }
 
-model OrderStatus {
-  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String  @unique
+model order_statuses {
+  id          Int      @id @default(autoincrement()) @db.SmallInt
+  code        String   @unique
   description String?
-  orders      Order[]
-
-  @@map("order_statuses")
+  orders      orders[]
 }
 
-model OrderType {
-  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String  @unique
+model order_types {
+  id          Int      @id @default(autoincrement()) @db.SmallInt
+  code        String   @unique
   description String?
-  orders      Order[]
-
-  @@map("order_types")
+  orders      orders[]
 }
 
-model TimeInForceType {
-  id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
-  code        String  @unique
-  description String?
-  orders      Order[]
+model orders {
+  id                  String               @id
+  account_id          String
+  instrument_id       String
+  side_id             Int                  @db.SmallInt
+  type_id             Int                  @db.SmallInt
+  status_id           Int                  @db.SmallInt
+  time_in_force_id    Int?                 @db.SmallInt
+  client_order_id     String?              @unique
+  price               Decimal?             @db.Decimal(18, 8)
+  quantity            Decimal              @db.Decimal(18, 8)
+  filled_quantity     Decimal              @default(0.00000000) @db.Decimal(18, 8)
+  created_at          DateTime             @default(now())
+  updated_at          DateTime
+  remaining_quantity  Decimal?             @db.Decimal(18, 8)
+  executions          executions[]
+  accounts            accounts             @relation(fields: [account_id], references: [id])
+  order_sides         order_sides          @relation(fields: [side_id], references: [id])
+  order_statuses      order_statuses       @relation(fields: [status_id], references: [id])
+  time_in_force_types time_in_force_types? @relation(fields: [time_in_force_id], references: [id])
+  order_types         order_types          @relation(fields: [type_id], references: [id])
 
-  @@map("time_in_force_types")
+  @@index([account_id, status_id])
+  @@index([instrument_id, side_id, status_id, created_at])
+  @@index([side_id], map: "orders_side_id_fkey")
+  @@index([status_id], map: "orders_status_id_fkey")
+  @@index([time_in_force_id], map: "orders_time_in_force_id_fkey")
+  @@index([type_id], map: "orders_type_id_fkey")
 }
 
-model Account {
-  id             String           @id @default(uuid())
-  email          String           @unique
-  password       String
-  baseCurrencyId String           @map("base_currency_id")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  balances       AccountBalance[]
-  baseCurrency   Currency         @relation("AccountBaseCurrency", fields: [baseCurrencyId], references: [id])
-  ledgerEntries  LedgerEntry[]
-  orders         Order[]
-  positions      Position[]
-  sessions       Session[]
-  transactions   Transaction[]
+model positions {
+  id            String      @id
+  account_id    String
+  instrument_id String
+  quantity      Decimal     @db.Decimal(18, 8)
+  average_price Decimal     @db.Decimal(18, 8)
+  updated_at    DateTime
+  accounts      accounts    @relation(fields: [account_id], references: [id])
+  instruments   instruments @relation(fields: [instrument_id], references: [id])
 
-  @@index([baseCurrencyId], map: "accounts_base_currency_id_fkey")
-  @@map("accounts")
+  @@unique([account_id, instrument_id], map: "positions_account_instrument_unique")
+  @@index([instrument_id], map: "positions_instrument_id_fkey")
 }
 
-model AccountBalance {
-  id         String   @id @default(uuid())
-  accountId  String   @map("account_id")
-  currencyId String   @map("currency_id")
-  available  Decimal  @default(0.00000000) @db.Decimal(18, 8)
-  reserved   Decimal  @default(0.00000000) @db.Decimal(18, 8)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  currency   Currency @relation(fields: [currencyId], references: [id])
+model sessions {
+  id         String   @id
+  account_id String
+  token      String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+  accounts   accounts @relation(fields: [account_id], references: [id], onDelete: Cascade)
 
-  @@unique([accountId, currencyId], map: "account_balance_unique")
-  @@index([currencyId], map: "account_balances_currency_id_fkey")
-  @@map("account_balances")
-}
-
-model Session {
-  id        String   @id @default(uuid())
-  accountId String   @map("account_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
+  @@index([account_id, expires_at])
+  @@index([expires_at])
   @@index([token])
-  @@index([accountId, expiresAt])
-  @@index([expiresAt])
-  @@map("sessions")
 }
 
-model Order {
-  id                String           @id @default(uuid())
-  accountId         String           @map("account_id")
-  instrumentId      String           @map("instrument_id")
-  sideId            Int              @map("side_id") @db.SmallInt
-  typeId            Int              @map("type_id") @db.SmallInt
-  statusId          Int              @map("status_id") @db.SmallInt
-  timeInForceId     Int?             @map("time_in_force_id") @db.SmallInt
-  clientOrderId     String?          @unique @map("client_order_id")
-  price             Decimal?         @db.Decimal(18, 8)
-  quantity          Decimal          @db.Decimal(18, 8)
-  filledQuantity    Decimal          @default(0.00000000) @map("filled_quantity") @db.Decimal(18, 8)
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  remainingQuantity Decimal?         @map("remaining_quantity") @db.Decimal(18, 8)
-  executions        Execution[]
-  account           Account          @relation(fields: [accountId], references: [id])
-  side              OrderSide        @relation(fields: [sideId], references: [id])
-  status            OrderStatus      @relation(fields: [statusId], references: [id])
-  timeInForce       TimeInForceType? @relation(fields: [timeInForceId], references: [id])
-  type              OrderType        @relation(fields: [typeId], references: [id])
-
-  @@index([instrumentId, sideId, statusId, createdAt])
-  @@index([accountId, statusId])
-  @@index([sideId], map: "orders_side_id_fkey")
-  @@index([statusId], map: "orders_status_id_fkey")
-  @@index([timeInForceId], map: "orders_time_in_force_id_fkey")
-  @@index([typeId], map: "orders_type_id_fkey")
-  @@map("orders")
-}
-
-model Execution {
-  id                  String   @id @default(uuid())
-  orderId             String   @map("order_id")
-  counterpartyOrderId String?  @map("counterparty_order_id")
-  price               Decimal  @db.Decimal(18, 8)
-  quantity            Decimal  @db.Decimal(18, 8)
-  executedAt          DateTime @default(now()) @map("executed_at")
-  liquidity           String?
-  order               Order    @relation(fields: [orderId], references: [id])
-
-  @@index([orderId])
-  @@map("executions")
-}
-
-model Position {
-  id           String     @id @default(uuid())
-  accountId    String     @map("account_id")
-  instrumentId String     @map("instrument_id")
-  quantity     Decimal    @db.Decimal(18, 8)
-  averagePrice Decimal    @map("average_price") @db.Decimal(18, 8)
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-  account      Account    @relation(fields: [accountId], references: [id])
-  instrument   Instrument @relation(fields: [instrumentId], references: [id])
-
-  @@unique([accountId, instrumentId], map: "positions_account_instrument_unique")
-  @@index([instrumentId], map: "positions_instrument_id_fkey")
-  @@map("positions")
-}
-
-model LedgerEntryType {
-  id          Int           @id @default(autoincrement()) @db.SmallInt
-  code        String        @unique
+model time_in_force_types {
+  id          Int      @id @default(autoincrement()) @db.SmallInt
+  code        String   @unique
   description String?
-  category    String?
-  entries     LedgerEntry[]
-
-  @@map("ledger_entry_types")
+  orders      orders[]
 }
 
-model LedgerEntry {
-  id             String          @id @default(uuid())
-  accountId      String          @map("account_id")
-  entryTypeId    Int             @map("entry_type_id") @db.SmallInt
-  amount         Decimal         @db.Decimal(18, 8)
-  referenceId    String?         @map("reference_id")
-  referenceTable String?         @map("reference_table")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  account        Account         @relation(fields: [accountId], references: [id])
-  entryType      LedgerEntryType @relation(fields: [entryTypeId], references: [id])
-
-  @@index([accountId, createdAt])
-  @@index([entryTypeId], map: "ledger_entries_entry_type_id_fkey")
-  @@map("ledger_entries")
+model transaction_statuses {
+  id           Int            @id @default(autoincrement()) @db.SmallInt
+  code         String         @unique
+  description  String?
+  transactions transactions[]
 }
 
-model MarketQuote {
-  id           BigInt     @id @default(autoincrement())
-  instrumentId String     @map("instrument_id")
-  bidPrice     Decimal?   @map("bid_price") @db.Decimal(18, 8)
-  askPrice     Decimal?   @map("ask_price") @db.Decimal(18, 8)
-  lastPrice    Decimal?   @map("last_price") @db.Decimal(18, 8)
-  volume       Decimal?   @db.Decimal(18, 8)
-  timestamp    DateTime   @map("ts")
-  instrument   Instrument @relation(fields: [instrumentId], references: [id])
-
-  @@unique([instrumentId, timestamp(sort: Desc)], map: "uq_market_quotes_instrument_ts")
-  @@map("market_quotes")
-}
-
-model TransactionType {
-  id           Int           @id @default(autoincrement()) @db.SmallInt
-  code         String        @unique
+model transaction_types {
+  id           Int            @id @default(autoincrement()) @db.SmallInt
+  code         String         @unique
   description  String?
   category     String?
-  transactions Transaction[]
-
-  @@map("transaction_types")
+  transactions transactions[]
 }
 
-model TransactionStatus {
-  id           Int           @id @default(autoincrement()) @db.SmallInt
-  code         String        @unique
-  description  String?
-  transactions Transaction[]
+model transactions {
+  id                   String               @id
+  account_id           String
+  tx_type_id           Int                  @db.SmallInt
+  status_id            Int                  @db.SmallInt
+  amount               Decimal              @db.Decimal(18, 8)
+  external_ref         String?
+  created_at           DateTime             @default(now())
+  updated_at           DateTime
+  currency_id          String?
+  accounts             accounts             @relation(fields: [account_id], references: [id])
+  currencies           currencies?          @relation(fields: [currency_id], references: [id])
+  transaction_statuses transaction_statuses @relation(fields: [status_id], references: [id])
+  transaction_types    transaction_types    @relation(fields: [tx_type_id], references: [id])
 
-  @@map("transaction_statuses")
-}
-
-model Transaction {
-  id          String            @id @default(uuid())
-  accountId   String            @map("account_id")
-  txTypeId    Int               @map("tx_type_id") @db.SmallInt
-  statusId    Int               @map("status_id") @db.SmallInt
-  amount      Decimal           @db.Decimal(18, 8)
-  externalRef String?           @map("external_ref")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
-  currencyId  String?           @map("currency_id")
-  account     Account           @relation(fields: [accountId], references: [id])
-  currency    Currency?         @relation(fields: [currencyId], references: [id])
-  status      TransactionStatus @relation(fields: [statusId], references: [id])
-  txType      TransactionType   @relation(fields: [txTypeId], references: [id])
-
-  @@index([accountId, statusId, txTypeId])
-  @@index([accountId, createdAt])
-  @@index([currencyId], map: "transactions_currency_id_fkey")
-  @@index([statusId], map: "transactions_status_id_fkey")
-  @@index([txTypeId], map: "transactions_tx_type_id_fkey")
-  @@map("transactions")
-}
-
-model Instrument {
-  id           String              @id @default(uuid())
-  symbol       String              @unique
-  name         String
-  assetClassId String              @map("asset_class_id")
-  lotSize      Decimal             @map("lot_size") @db.Decimal(18, 8)
-  tickSize     Decimal             @map("tick_size") @db.Decimal(18, 8)
-  currencyId   String              @map("currency_id")
-  createdAt    DateTime            @default(now()) @map("created_at")
-  assetClass   AssetClass          @relation(fields: [assetClassId], references: [id])
-  currency     Currency            @relation(fields: [currencyId], references: [id])
-  marketQuotes MarketQuote[]
-  positions    Position[]
-  prices       InstrumentPrice[]   // <-- Added relation for historical prices
-
-  @@index([assetClassId], map: "instruments_asset_class_id_fkey")
-  @@index([currencyId], map: "instruments_currency_id_fkey")
-  @@map("instruments")
-}
-
-model InstrumentPrice {
-  id           BigInt      @id @default(autoincrement())
-  instrumentId String      @map("instrument_id")
-  timestamp    DateTime    @default(now())
-  price        Decimal     @db.Decimal(18, 8)
-  volume       Decimal?    @db.Decimal(18, 8)
-  bidPrice     Decimal?    @map("bid_price") @db.Decimal(18, 8)
-  askPrice     Decimal?    @map("ask_price") @db.Decimal(18, 8)
-  source       String?     @map("source") // e.g., Binance, Coinbase, AI Model
-  instrument   Instrument  @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
-
-  @@index([instrumentId, timestamp])
-  @@unique([instrumentId, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
-  @@map("instrument_prices")
+  @@index([account_id, created_at])
+  @@index([account_id, status_id, tx_type_id])
+  @@index([currency_id], map: "transactions_currency_id_fkey")
+  @@index([status_id], map: "transactions_status_id_fkey")
+  @@index([tx_type_id], map: "transactions_tx_type_id_fkey")
 }

@@ -86,14 +86,12 @@ model instrument_prices {
   timestamp     DateTime    @default(now())
   price         Decimal     @db.Decimal(18, 8)
   volume        Decimal?    @db.Decimal(18, 8)
-  bid_price     Decimal?    @db.Decimal(18, 8)
-  ask_price     Decimal?    @db.Decimal(18, 8)
-  source        String?
   instruments   instruments @relation(fields: [instrument_id], references: [id], onDelete: Cascade)
 
   @@unique([instrument_id, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
   @@index([instrument_id, timestamp])
 }
+
 model ledger_entries {
   id                 String             @id
   account_id         String

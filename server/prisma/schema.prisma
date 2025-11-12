@@ -256,55 +256,6 @@ model Transaction {
   @@map("transactions")
 }
 
-model ActorType {
-  id          Int        @id @default(autoincrement()) @db.SmallInt
-  code        String     @unique
-  description String?
-  auditLogs   AuditLog[] @relation("ActorTypeToAuditLog")
-
-  @@map("actor_types")
-}
-
-model ActionType {
-  id          Int        @id @default(autoincrement()) @db.SmallInt
-  code        String     @unique
-  description String?
-  category    String?
-  auditLogs   AuditLog[] @relation("ActionTypeToAuditLog")
-
-  @@map("action_types")
-}
-
-model ObjectType {
-  id          Int        @id @default(autoincrement()) @db.SmallInt
-  code        String     @unique
-  description String?
-  auditLogs   AuditLog[] @relation("ObjectTypeToAuditLog")
-
-  @@map("object_types")
-}
-
-model AuditLog {
-  id           String      @id @default(uuid())
-  actorId      String?     @map("actor_id")
-  actorTypeId  Int?        @map("actor_type_id") @db.SmallInt
-  actionId     Int?        @map("action_id") @db.SmallInt
-  objectTypeId Int?        @map("object_type_id") @db.SmallInt
-  objectId     String?     @map("object_id")
-  oldValues    Json?       @map("old_values")
-  newValues    Json?       @map("new_values")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  action       ActionType? @relation("ActionTypeToAuditLog", fields: [actionId], references: [id])
-  actorType    ActorType?  @relation("ActorTypeToAuditLog", fields: [actorTypeId], references: [id])
-  objectType   ObjectType? @relation("ObjectTypeToAuditLog", fields: [objectTypeId], references: [id])
-
-  @@index([actorId, createdAt])
-  @@index([actionId], map: "audit_log_action_id_fkey")
-  @@index([actorTypeId], map: "audit_log_actor_type_id_fkey")
-  @@index([objectTypeId], map: "audit_log_object_type_id_fkey")
-  @@map("audit_log")
-}
-
 model Instrument {
   id           String              @id @default(uuid())
   symbol       String              @unique

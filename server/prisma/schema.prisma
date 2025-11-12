@@ -40,13 +40,6 @@ model accounts {
   @@index([base_currency_id], map: "accounts_base_currency_id_fkey")
 }
 
-model asset_classes {
-  id          String        @id
-  name        String        @unique
-  description String?
-  instruments instruments[]
-}
-
 model currencies {
   id               String             @id
   code             String             @unique
@@ -75,18 +68,15 @@ model instruments {
   id                 String              @id
   symbol             String              @unique
   name               String
-  asset_class_id     String
   lot_size           Decimal             @db.Decimal(18, 8)
   tick_size          Decimal             @db.Decimal(18, 8)
   currency_id        String
   created_at         DateTime            @default(now())
-  asset_classes      asset_classes       @relation(fields: [asset_class_id], references: [id])
   currencies         currencies          @relation(fields: [currency_id], references: [id])
   instrument_prices  instrument_prices[]
   market_quotes      market_quotes[]
   positions          positions[]
 
-  @@index([asset_class_id], map: "instruments_asset_class_id_fkey")
   @@index([currency_id], map: "instruments_currency_id_fkey")
 }
 

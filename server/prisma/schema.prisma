@@ -282,9 +282,6 @@ model InstrumentPrice {
   timestamp    DateTime    @default(now())
   price        Decimal     @db.Decimal(18, 8)
   volume       Decimal?    @db.Decimal(18, 8)
-  bidPrice     Decimal?    @map("bid_price") @db.Decimal(18, 8)
-  askPrice     Decimal?    @map("ask_price") @db.Decimal(18, 8)
-  source       String?     @map("source") // e.g., Binance, Coinbase, AI Model
   instrument   Instrument  @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
 
   @@index([instrumentId, timestamp])

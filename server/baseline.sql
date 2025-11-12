@@ -20,23 +20,6 @@ CREATE TABLE `asset_classes` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `instruments` (
-    `id` VARCHAR(191) NOT NULL,
-    `symbol` VARCHAR(191) NOT NULL,
-    `name` VARCHAR(191) NOT NULL,
-    `asset_class_id` VARCHAR(191) NOT NULL,
-    `lot_size` DECIMAL(18, 8) NOT NULL,
-    `tick_size` DECIMAL(18, 8) NOT NULL,
-    `currency_id` VARCHAR(191) NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    UNIQUE INDEX `instruments_symbol_key`(`symbol`),
-    INDEX `instruments_asset_class_id_fkey`(`asset_class_id`),
-    INDEX `instruments_currency_id_fkey`(`currency_id`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `order_sides` (
     `id` SMALLINT NOT NULL AUTO_INCREMENT,
     `code` VARCHAR(191) NOT NULL,
@@ -256,60 +239,34 @@ CREATE TABLE `transactions` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `actor_types` (
-    `id` SMALLINT NOT NULL AUTO_INCREMENT,
-    `code` VARCHAR(191) NOT NULL,
-    `description` VARCHAR(191) NULL,
-
-    UNIQUE INDEX `actor_types_code_key`(`code`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `action_types` (
-    `id` SMALLINT NOT NULL AUTO_INCREMENT,
-    `code` VARCHAR(191) NOT NULL,
-    `description` VARCHAR(191) NULL,
-    `category` VARCHAR(191) NULL,
-
-    UNIQUE INDEX `action_types_code_key`(`code`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `object_types` (
-    `id` SMALLINT NOT NULL AUTO_INCREMENT,
-    `code` VARCHAR(191) NOT NULL,
-    `description` VARCHAR(191) NULL,
-
-    UNIQUE INDEX `object_types_code_key`(`code`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `audit_log` (
+CREATE TABLE `instruments` (
     `id` VARCHAR(191) NOT NULL,
-    `actor_id` VARCHAR(191) NULL,
-    `actor_type_id` SMALLINT NULL,
-    `action_id` SMALLINT NULL,
-    `object_type_id` SMALLINT NULL,
-    `object_id` VARCHAR(191) NULL,
-    `old_values` JSON NULL,
-    `new_values` JSON NULL,
+    `symbol` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `asset_class_id` VARCHAR(191) NOT NULL,
+    `lot_size` DECIMAL(18, 8) NOT NULL,
+    `tick_size` DECIMAL(18, 8) NOT NULL,
+    `currency_id` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
-    INDEX `audit_log_actor_id_created_at_idx`(`actor_id`, `created_at`),
-    INDEX `audit_log_action_id_fkey`(`action_id`),
-    INDEX `audit_log_actor_type_id_fkey`(`actor_type_id`),
-    INDEX `audit_log_object_type_id_fkey`(`object_type_id`),
+    UNIQUE INDEX `instruments_symbol_key`(`symbol`),
+    INDEX `instruments_asset_class_id_fkey`(`asset_class_id`),
+    INDEX `instruments_currency_id_fkey`(`currency_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- AddForeignKey
-ALTER TABLE `instruments` ADD CONSTRAINT `instruments_asset_class_id_fkey` FOREIGN KEY (`asset_class_id`) REFERENCES `asset_classes`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+-- CreateTable
+CREATE TABLE `instrument_prices` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `instrument_id` VARCHAR(191) NOT NULL,
+    `timestamp` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `price` DECIMAL(18, 8) NOT NULL,
+    `volume` DECIMAL(18, 8) NULL,
 
--- AddForeignKey
-ALTER TABLE `instruments` ADD CONSTRAINT `instruments_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+    INDEX `instrument_prices_instrument_id_timestamp_idx`(`instrument_id`, `timestamp`),
+    UNIQUE INDEX `uq_instrument_price_instrument_ts`(`instrument_id`, `timestamp` DESC),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
 ALTER TABLE `accounts` ADD CONSTRAINT `accounts_base_currency_id_fkey` FOREIGN KEY (`base_currency_id`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -369,11 +326,10 @@ ALTER TABLE `transactions` ADD CONSTRAINT `transactions_status_id_fkey` FOREIGN 
 ALTER TABLE `transactions` ADD CONSTRAINT `transactions_tx_type_id_fkey` FOREIGN KEY (`tx_type_id`) REFERENCES `transaction_types`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `audit_log` ADD CONSTRAINT `audit_log_action_id_fkey` FOREIGN KEY (`action_id`) REFERENCES `action_types`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `instruments` ADD CONSTRAINT `instruments_asset_class_id_fkey` FOREIGN KEY (`asset_class_id`) REFERENCES `asset_classes`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `audit_log` ADD CONSTRAINT `audit_log_actor_type_id_fkey` FOREIGN KEY (`actor_type_id`) REFERENCES `actor_types`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `instruments` ADD CONSTRAINT `instruments_currency_id_fkey` FOREIGN KEY (`currency_id`) REFERENCES `currencies`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `audit_log` ADD CONSTRAINT `audit_log_object_type_id_fkey` FOREIGN KEY (`object_type_id`) REFERENCES `object_types`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
+ALTER TABLE `instrument_prices` ADD CONSTRAINT `instrument_prices_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `instruments`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

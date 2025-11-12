@@ -30,25 +30,6 @@ model AssetClass {
   @@map("asset_classes")
 }
 
-model Instrument {
-  id           String        @id @default(uuid())
-  symbol       String        @unique
-  name         String
-  assetClassId String        @map("asset_class_id")
-  lotSize      Decimal       @map("lot_size") @db.Decimal(18, 8)
-  tickSize     Decimal       @map("tick_size") @db.Decimal(18, 8)
-  currencyId   String        @map("currency_id")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  assetClass   AssetClass    @relation(fields: [assetClassId], references: [id])
-  currency     Currency      @relation(fields: [currencyId], references: [id])
-  marketQuotes MarketQuote[]
-  positions    Position[]
-
-  @@index([assetClassId], map: "instruments_asset_class_id_fkey")
-  @@index([currencyId], map: "instruments_currency_id_fkey")
-  @@map("instruments")
-}
-
 model OrderSide {
   id          Int     @id @default(autoincrement()) @map("id") @db.SmallInt
   code        String  @unique
@@ -322,4 +303,40 @@ model AuditLog {
   @@index([actorTypeId], map: "audit_log_actor_type_id_fkey")
   @@index([objectTypeId], map: "audit_log_object_type_id_fkey")
   @@map("audit_log")
+}
+
+model Instrument {
+  id           String              @id @default(uuid())
+  symbol       String              @unique
+  name         String
+  assetClassId String              @map("asset_class_id")
+  lotSize      Decimal             @map("lot_size") @db.Decimal(18, 8)
+  tickSize     Decimal             @map("tick_size") @db.Decimal(18, 8)
+  currencyId   String              @map("currency_id")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  assetClass   AssetClass          @relation(fields: [assetClassId], references: [id])
+  currency     Currency            @relation(fields: [currencyId], references: [id])
+  marketQuotes MarketQuote[]
+  positions    Position[]
+  prices       InstrumentPrice[]   // <-- Added relation for historical prices
+
+  @@index([assetClassId], map: "instruments_asset_class_id_fkey")
+  @@index([currencyId], map: "instruments_currency_id_fkey")
+  @@map("instruments")
+}
+
+model InstrumentPrice {
+  id           BigInt      @id @default(autoincrement())
+  instrumentId String      @map("instrument_id")
+  timestamp    DateTime    @default(now())
+  price        Decimal     @db.Decimal(18, 8)
+  volume       Decimal?    @db.Decimal(18, 8)
+  bidPrice     Decimal?    @map("bid_price") @db.Decimal(18, 8)
+  askPrice     Decimal?    @map("ask_price") @db.Decimal(18, 8)
+  source       String?     @map("source") // e.g., Binance, Coinbase, AI Model
+  instrument   Instrument  @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@index([instrumentId, timestamp])
+  @@unique([instrumentId, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
+  @@map("instrument_prices")
 }

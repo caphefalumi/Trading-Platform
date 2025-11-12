@@ -81,7 +81,7 @@ class MarketDataAgent {
   async fetchFromCoinGecko() {
     try {
       // Get all instruments from database
-      const instruments = await prisma.instrument.findMany({
+      const instruments = await prisma.instruments.findMany({
         select: {
           id: true,
           symbol: true,
@@ -162,7 +162,7 @@ class MarketDataAgent {
     }
 
     try {
-      const instruments = await prisma.instrument.findMany({
+      const instruments = await prisma.instruments.findMany({
         select: {
           id: true,
           symbol: true,
@@ -242,14 +242,14 @@ class MarketDataAgent {
       // Save to database
       const results = await Promise.allSettled(
         quotes.map(quote =>
-          prisma.marketQuote.create({
+          prisma.market_quotes.create({
             data: {
-              instrumentId: quote.instrumentId,
-              lastPrice: quote.lastPrice,
-              bidPrice: quote.bidPrice,
-              askPrice: quote.askPrice,
+              instrument_id: quote.instrumentId,
+              last_price: quote.lastPrice,
+              bid_price: quote.bidPrice,
+              ask_price: quote.askPrice,
               volume: quote.volume,
-              timestamp: quote.timestamp,
+              ts: quote.timestamp,
             },
           })
         )
@@ -271,26 +271,26 @@ class MarketDataAgent {
    */
   async getLatestQuotes() {
     try {
-      const instruments = await prisma.instrument.findMany({
+      const instruments = await prisma.instruments.findMany({
         include: {
-          marketQuotes: {
-            orderBy: { timestamp: 'desc' },
+          market_quotes: {
+            orderBy: { ts: 'desc' },
             take: 1,
           },
         },
       })
 
       return instruments.map(inst => {
-        const quote = inst.marketQuotes[0]
+        const quote = inst.market_quotes[0]
         return {
           instrumentId: inst.id,
           symbol: inst.symbol,
           name: inst.name,
-          lastPrice: quote?.lastPrice ? parseFloat(quote.lastPrice.toString()) : null,
-          bidPrice: quote?.bidPrice ? parseFloat(quote.bidPrice.toString()) : null,
-          askPrice: quote?.askPrice ? parseFloat(quote.askPrice.toString()) : null,
+          lastPrice: quote?.last_price ? parseFloat(quote.last_price.toString()) : null,
+          bidPrice: quote?.bid_price ? parseFloat(quote.bid_price.toString()) : null,
+          askPrice: quote?.ask_price ? parseFloat(quote.ask_price.toString()) : null,
           volume: quote?.volume ? parseFloat(quote.volume.toString()) : null,
-          timestamp: quote?.timestamp || null,
+          timestamp: quote?.ts || null,
         }
       })
     } catch (error) {

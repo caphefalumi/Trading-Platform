@@ -119,12 +119,12 @@ class MatchingEngine {
         }
         // Foreign key existence checks
         const [account, instrument, side, type, status, tif] = await Promise.all([
-            prisma.account.findUnique({ where: { id: orderData.accountId } }),
-            prisma.instrument.findUnique({ where: { id: orderData.instrumentId } }),
-            prisma.orderSide.findUnique({ where: { id: orderData.sideId } }),
-            prisma.orderType.findUnique({ where: { id: orderData.typeId } }),
-            prisma.orderStatus.findUnique({ where: { id: orderData.statusId } }),
-            orderData.timeInForceId ? prisma.timeInForceType.findUnique({ where: { id: orderData.timeInForceId } }) : Promise.resolve(true)
+            prisma.accounts.findUnique({ where: { id: orderData.accountId } }),
+            prisma.instruments.findUnique({ where: { id: orderData.instrumentId } }),
+            prisma.order_sides.findUnique({ where: { id: orderData.sideId } }),
+            prisma.order_types.findUnique({ where: { id: orderData.typeId } }),
+            prisma.order_statuses.findUnique({ where: { id: orderData.statusId } }),
+            orderData.timeInForceId ? prisma.time_in_force_types.findUnique({ where: { id: orderData.timeInForceId } }) : Promise.resolve(true)
         ])
         if (!account) throw new Error('Invalid accountId')
         if (!instrument) throw new Error('Invalid instrumentId')
@@ -188,7 +188,7 @@ class MatchingEngine {
             const newMatchFilled = parseFloat(match.filledQuantity || '0') + tradeQty
             const newMatchRemaining = parseFloat(match.quantity) - newMatchFilled
             const matchStatusId = newMatchRemaining <= 0 ? 3 : 2 // 3=FILLED, 2=PARTIALLY_FILLED
-            
+
             await prisma.order.update({
                 where: { id: match.id },
                 data: {
@@ -202,7 +202,7 @@ class MatchingEngine {
         // 5. Update new order
         const newOrderFilled = parseFloat(quantityStr) - remainingQty
         const newOrderStatusId = remainingQty === 0 ? 3 : (remainingQty < parseFloat(quantityStr) ? 2 : 1) // 3=FILLED, 2=PARTIALLY_FILLED, 1=OPEN
-        
+
         await prisma.order.update({
             where: { id: newOrder.id },
             data: {

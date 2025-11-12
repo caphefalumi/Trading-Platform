@@ -5,10 +5,9 @@ const toDecimal = (value) => (value instanceof Prisma.Decimal ? value : new Pris
 
 export const listInstruments = async (_req, res) => {
   try {
-    const instruments = await prisma.instrument.findMany({
+    const instruments = await prisma.instruments.findMany({
       include: {
-        assetClass: true,
-        currency: true,
+        currencies: true,
       },
       orderBy: { symbol: 'asc' },
     })
@@ -20,39 +19,30 @@ export const listInstruments = async (_req, res) => {
 }
 
 export const createInstrument = async (req, res) => {
-  const { symbol, name, assetClassName, lotSize, tickSize, currencyCode } = req.body
+  const { symbol, name, lotSize, tickSize, currencyCode } = req.body
 
-  if (!symbol || !name || !assetClassName || !currencyCode) {
-    return res.status(400).json({ error: 'Symbol, name, asset class and currency are required' })
+  if (!symbol || !name || !currencyCode) {
+    return res.status(400).json({ error: 'Symbol, name and currency are required' })
   }
 
   try {
     const instrument = await prisma.$transaction(async (tx) => {
-      const [assetClass, currency] = await Promise.all([
-        tx.assetClass.upsert({
-          where: { name: assetClassName },
-          update: {},
-          create: { name: assetClassName },
-        }),
-        tx.currency.findUnique({ where: { code: currencyCode } }),
-      ])
+      const currency = await tx.currencies.findUnique({ where: { code: currencyCode } })
 
       if (!currency) {
         throw new Error(`Currency ${currencyCode} not found`)
       }
 
-      return tx.instrument.create({
+      return tx.instruments.create({
         data: {
           symbol,
           name,
-          assetClassId: assetClass.id,
-          lotSize: toDecimal(lotSize || 0.0001),
-          tickSize: toDecimal(tickSize || 0.01),
-          currencyId: currency.id,
+          lot_size: toDecimal(lotSize || 0.0001),
+          tick_size: toDecimal(tickSize || 0.01),
+          currency_id: currency.id,
         },
         include: {
-          assetClass: true,
-          currency: true,
+          currencies: true,
         },
       })
     })
@@ -68,16 +58,15 @@ export const updateInstrument = async (req, res) => {
   const { name, lotSize, tickSize } = req.body
 
   try {
-    const instrument = await prisma.instrument.update({
+    const instrument = await prisma.instruments.update({
       where: { id },
       data: {
         ...(name ? { name } : {}),
-        ...(lotSize ? { lotSize: toDecimal(lotSize) } : {}),
-        ...(tickSize ? { tickSize: toDecimal(tickSize) } : {}),
+        ...(lotSize ? { lot_size: toDecimal(lotSize) } : {}),
+        ...(tickSize ? { tick_size: toDecimal(tickSize) } : {}),
       },
       include: {
-        assetClass: true,
-        currency: true,
+        currencies: true,
       },
     })
 

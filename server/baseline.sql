@@ -260,7 +260,8 @@ CREATE TABLE `instrument_prices` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `instrument_id` VARCHAR(191) NOT NULL,
     `timestamp` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `price` DECIMAL(18, 8) NOT NULL,
+    `open_price` DECIMAL(18, 8) NULL,
+    `close_price` DECIMAL(18, 8) NULL,
     `volume` DECIMAL(18, 8) NULL,
 
     INDEX `instrument_prices_instrument_id_timestamp_idx`(`instrument_id`, `timestamp`),
@@ -282,6 +283,9 @@ ALTER TABLE `sessions` ADD CONSTRAINT `sessions_account_id_fkey` FOREIGN KEY (`a
 
 -- AddForeignKey
 ALTER TABLE `orders` ADD CONSTRAINT `orders_account_id_fkey` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `orders` ADD CONSTRAINT `orders_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `instruments`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `orders` ADD CONSTRAINT `orders_side_id_fkey` FOREIGN KEY (`side_id`) REFERENCES `order_sides`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -333,3 +337,4 @@ ALTER TABLE `instruments` ADD CONSTRAINT `instruments_currency_id_fkey` FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE `instrument_prices` ADD CONSTRAINT `instrument_prices_instrument_id_fkey` FOREIGN KEY (`instrument_id`) REFERENCES `instruments`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+

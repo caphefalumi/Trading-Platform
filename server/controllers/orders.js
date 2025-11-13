@@ -173,14 +173,12 @@ const applySellFill = async (tx, { order, fillQty, tradePrice }) => {
 
   const available = toDecimal(sellerBalance.available).add(fillValue)
   const reserved = toDecimal(sellerBalance.reserved)
-  const total = available.add(reserved)
 
   await tx.accountBalance.update({
     where: { id: sellerBalance.id },
     data: {
       available,
       reserved,
-      total,
     },
   })
 

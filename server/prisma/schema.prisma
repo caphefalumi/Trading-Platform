@@ -131,6 +131,7 @@ model Order {
   remainingQuantity Decimal?         @map("remaining_quantity") @db.Decimal(18, 8)
   executions        Execution[]
   account           Account          @relation(fields: [accountId], references: [id])
+  instrument        Instrument       @relation(fields: [instrumentId], references: [id])
   side              OrderSide        @relation(fields: [sideId], references: [id])
   status            OrderStatus      @relation(fields: [statusId], references: [id])
   timeInForce       TimeInForceType? @relation(fields: [timeInForceId], references: [id])
@@ -268,6 +269,7 @@ model Instrument {
   assetClass   AssetClass          @relation(fields: [assetClassId], references: [id])
   currency     Currency            @relation(fields: [currencyId], references: [id])
   marketQuotes MarketQuote[]
+  orders       Order[]
   positions    Position[]
   prices       InstrumentPrice[]   // <-- Added relation for historical prices
 
@@ -277,14 +279,16 @@ model Instrument {
 }
 
 model InstrumentPrice {
-  id           BigInt      @id @default(autoincrement())
-  instrumentId String      @map("instrument_id")
-  timestamp    DateTime    @default(now())
-  price        Decimal     @db.Decimal(18, 8)
-  volume       Decimal?    @db.Decimal(18, 8)
-  instrument   Instrument  @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  id            BigInt      @id @default(autoincrement())
+  instrument_id String
+  timestamp     DateTime    @default(now())
+  open_price   Decimal?    @db.Decimal(18, 8)
+  close_price  Decimal?    @db.Decimal(18, 8)
+  volume        Decimal?    @db.Decimal(18, 8)
+  instrument   Instrument   @relation(fields: [instrument_id], references: [id], onDelete: Cascade)
 
-  @@index([instrumentId, timestamp])
-  @@unique([instrumentId, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
+  @@unique([instrument_id, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
+  @@index([instrument_id, timestamp])
   @@map("instrument_prices")
+
 }

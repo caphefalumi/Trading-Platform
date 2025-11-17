@@ -5,6 +5,7 @@ import instrumentRoutes from './instrumentRoutes.js'
 import orderRoutes from './orderRoutes.js'
 import engineRoutes from './engineRoutes.js'
 import marketDataRoutes from './marketDataRoutes.js'
+import predictionRoutes from './predictionRoutes.js'
 const router = express.Router()
 
 router.use('/api/auth', authRoutes)
@@ -13,5 +14,6 @@ router.use('/api/instruments', instrumentRoutes)
 router.use('/api/orders', orderRoutes)
 router.use('/api/engines', engineRoutes)
 router.use('/api/marketdata', marketDataRoutes)
+router.use('/api/predictions', predictionRoutes)
 router.use('/instruments', instrumentRoutes)
 export default router

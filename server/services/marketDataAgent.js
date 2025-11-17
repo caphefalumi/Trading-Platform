@@ -239,10 +239,11 @@ class MarketDataAgent {
         return
       }
 
-      // Save to database
+      // Save to database - both market_quotes and instrument_prices
       const results = await Promise.allSettled(
-        quotes.map(quote =>
-          prisma.marketQuote.create({
+        quotes.map(async (quote) => {
+          // Save market quote
+          await prisma.marketQuote.create({
             data: {
               instrumentId: quote.instrumentId,
               lastPrice: quote.lastPrice,
@@ -252,7 +253,19 @@ class MarketDataAgent {
               timestamp: quote.timestamp,
             },
           })
-        )
+
+          // Save instrument price (OHLC data)
+          // For real-time data, we use lastPrice for both open and close
+          await prisma.instrumentPrice.create({
+            data: {
+              instrument_id: quote.instrumentId,
+              timestamp: quote.timestamp,
+              open_price: quote.lastPrice,
+              close_price: quote.lastPrice,
+              volume: quote.volume,
+            },
+          })
+        })
       )
 
       const successful = results.filter(r => r.status === 'fulfilled').length

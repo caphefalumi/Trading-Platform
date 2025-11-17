@@ -27,6 +27,9 @@ export const requireAuth = async (req, res, next) => {
   }
 }
 
+// Alias for compatibility
+export const authenticateToken = requireAuth
+
 // Middleware to optionally attach account if authenticated
 export const optionalAuth = async (req, res, next) => {
   try {

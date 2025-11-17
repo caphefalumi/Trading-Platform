@@ -6,6 +6,7 @@ import MarketDataView from '../views/MarketDataView.vue'
 import TradeView from '../views/TradeView.vue'
 import OrderHistoryView from '../views/OrderHistoryView.vue'
 import PortfolioView from '../views/PortfolioView.vue'
+import PredictionsView from '../views/PredictionsView.vue'
 import { sessionState, initSession, clearUser } from '../stores/session'
 
 const routes = [
@@ -53,6 +54,12 @@ const routes = [
     path: '/portfolio',
     name: 'portfolio',
     component: PortfolioView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/predictions',
+    name: 'predictions',
+    component: PredictionsView,
     meta: { requiresAuth: true },
   },
   {

@@ -107,6 +107,21 @@
               >
                 {{ form.sideId === 1 ? 'Buy' : 'Sell' }} {{ getInstrumentSymbol() }}
               </v-btn>
+
+              <!-- Prediction Button -->
+              <v-btn
+                v-if="form.instrumentId"
+                @click="showPredictions"
+                color="primary"
+                variant="outlined"
+                block
+                size="large"
+                class="mt-2"
+                :loading="loadingPredictions"
+              >
+                <v-icon left class="mr-2">mdi-chart-line</v-icon>
+                View Price Predictions
+              </v-btn>
             </v-form>
           </v-card-text>
         </v-card>
@@ -208,6 +223,91 @@
         <v-btn variant="text" @click="showFeedback = false">Close</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Predictions Dialog -->
+    <v-dialog v-model="predictionsDialog" max-width="900px">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span class="text-h5">
+            <v-icon class="mr-2">mdi-chart-line</v-icon>
+            Price Predictions - {{ selectedInstrument?.symbol }}
+          </span>
+          <v-btn icon variant="text" @click="predictionsDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text>
+          <div v-if="loadingPredictions" class="text-center pa-8">
+            <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+            <p class="mt-4 text-medium-emphasis">Generating predictions...</p>
+          </div>
+
+          <div v-else-if="predictionError" class="text-center pa-8">
+            <v-icon size="64" color="error">mdi-alert-circle</v-icon>
+            <p class="mt-4 text-error">{{ predictionError }}</p>
+            <v-btn @click="loadPredictions" color="primary" class="mt-4">Retry</v-btn>
+          </div>
+
+          <div v-else-if="predictions">
+            <!-- Prediction Summary -->
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <div class="d-flex justify-space-between">
+                <div>
+                  <strong>Current Price:</strong> ${{ predictions.current_price?.toFixed(8) }}
+                </div>
+                <div>
+                  <strong>Model:</strong> {{ predictions.model }}
+                </div>
+                <div>
+                  <strong>Generated:</strong> {{ formatPredictionTime(predictions.generated_at) }}
+                </div>
+              </div>
+            </v-alert>
+
+            <!-- Prediction Chart -->
+            <div class="prediction-chart mb-4">
+              <v-card variant="outlined">
+                <v-card-text>
+                  <canvas ref="predictionChartCanvas"></canvas>
+                </v-card-text>
+              </v-card>
+            </div>
+
+            <!-- Predictions Table -->
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th>Time Ahead</th>
+                  <th>Predicted Price</th>
+                  <th>Confidence</th>
+                  <th>Change</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="pred in predictions.predictions?.slice(0, 24)" :key="pred.period_ahead">
+                  <td>{{ pred.period_ahead }}h</td>
+                  <td class="font-weight-bold">${{ pred.predicted_price?.toFixed(8) }}</td>
+                  <td>
+                    <v-chip :color="getConfidenceColor(pred.confidence)" size="small">
+                      {{ (pred.confidence * 100).toFixed(0) }}%
+                    </v-chip>
+                  </td>
+                  <td :class="getPriceChangeClass(pred.predicted_price, predictions.current_price)">
+                    {{ calculatePriceChange(pred.predicted_price, predictions.current_price) }}
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" variant="text" @click="predictionsDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 <script setup>
@@ -215,6 +315,10 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { submitOrder } from '../utils/engine'
 import { sessionState } from '../stores/session'
 import { api } from '../utils/api'
+import { getPredictions } from '../services/predictions'
+import { Chart, registerables } from 'chart.js'
+
+Chart.register(...registerables)
 
 const form = ref({
   instrumentId: '',
@@ -233,6 +337,14 @@ const loading = ref(false)
 const feedback = ref(null)
 const showFeedback = ref(false)
 let marketDataPollingInterval = null
+
+// Predictions state
+const predictionsDialog = ref(false)
+const loadingPredictions = ref(false)
+const predictions = ref(null)
+const predictionError = ref(null)
+const predictionChartCanvas = ref(null)
+let predictionChart = null
 
 const instrumentOptions = computed(() =>
   instruments.value.map(instr => ({
@@ -305,6 +417,29 @@ const formatExecutionTime = (timestamp) => {
   if (diff < 60) return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   return date.toLocaleTimeString()
+}
+
+const formatPredictionTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleString()
+}
+
+const getConfidenceColor = (confidence) => {
+  if (confidence >= 0.8) return 'success'
+  if (confidence >= 0.6) return 'warning'
+  return 'error'
+}
+
+const getPriceChangeClass = (predictedPrice, currentPrice) => {
+  if (!predictedPrice || !currentPrice) return ''
+  return predictedPrice > currentPrice ? 'text-success' : 'text-error'
+}
+
+const calculatePriceChange = (predictedPrice, currentPrice) => {
+  if (!predictedPrice || !currentPrice) return 'N/A'
+  const change = ((predictedPrice - currentPrice) / currentPrice * 100).toFixed(2)
+  return change >= 0 ? `+${change}%` : `${change}%`
 }
 
 const getInstrumentPrice = (instrumentId) => {
@@ -382,6 +517,114 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
+
+// Prediction functions
+const showPredictions = async () => {
+  predictionsDialog.value = true
+  await loadPredictions()
+}
+
+const loadPredictions = async () => {
+  if (!form.value.instrumentId) return
+
+  loadingPredictions.value = true
+  predictionError.value = null
+  predictions.value = null
+
+  try {
+    const result = await getPredictions(form.value.instrumentId, 24)
+
+    if (result.success) {
+      predictions.value = result
+      // Wait for next tick to ensure canvas is rendered
+      await new Promise(resolve => setTimeout(resolve, 100))
+      renderPredictionChart()
+    } else {
+      predictionError.value = result.error || 'Failed to generate predictions'
+    }
+  } catch (error) {
+    console.error('Failed to load predictions:', error)
+    predictionError.value = error.message || 'Failed to load predictions'
+  } finally {
+    loadingPredictions.value = false
+  }
+}
+
+const renderPredictionChart = () => {
+  if (!predictionChartCanvas.value || !predictions.value) return
+
+  // Destroy existing chart
+  if (predictionChart) {
+    predictionChart.destroy()
+  }
+
+  const ctx = predictionChartCanvas.value.getContext('2d')
+  const predictionsData = predictions.value.predictions || []
+
+  // Prepare data
+  const labels = ['Now', ...predictionsData.map(p => `+${p.period_ahead}h`)]
+  const prices = [predictions.value.current_price, ...predictionsData.map(p => p.predicted_price)]
+  const confidences = [1, ...predictionsData.map(p => p.confidence)]
+
+  // Create gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400)
+  gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)')
+  gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)')
+
+  predictionChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Predicted Price',
+        data: prices,
+        borderColor: '#3b82f6',
+        backgroundColor: gradient,
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#3b82f6'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const index = context.dataIndex
+              const price = context.parsed.y.toFixed(8)
+              const confidence = index > 0 ? ` (${(confidences[index] * 100).toFixed(0)}% confidence)` : ''
+              return `$${price}${confidence}`
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          ticks: {
+            callback: (value) => `$${value.toFixed(2)}`
+          }
+        },
+        x: {
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
+  })
+}
+
 
 // Load instruments
 const loadInstruments = async () => {

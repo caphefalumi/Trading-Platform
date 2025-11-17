@@ -108,7 +108,6 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
   account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@index([token])
   @@index([accountId, expiresAt])
   @@index([expiresAt])
   @@map("sessions")
@@ -258,20 +257,20 @@ model Transaction {
 }
 
 model Instrument {
-  id           String              @id @default(uuid())
-  symbol       String              @unique
+  id           String            @id @default(uuid())
+  symbol       String            @unique
   name         String
-  assetClassId String              @map("asset_class_id")
-  lotSize      Decimal             @map("lot_size") @db.Decimal(18, 8)
-  tickSize     Decimal             @map("tick_size") @db.Decimal(18, 8)
-  currencyId   String              @map("currency_id")
-  createdAt    DateTime            @default(now()) @map("created_at")
-  assetClass   AssetClass          @relation(fields: [assetClassId], references: [id])
-  currency     Currency            @relation(fields: [currencyId], references: [id])
+  assetClassId String            @map("asset_class_id")
+  lotSize      Decimal           @map("lot_size") @db.Decimal(18, 8)
+  tickSize     Decimal           @map("tick_size") @db.Decimal(18, 8)
+  currencyId   String            @map("currency_id")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  prices       InstrumentPrice[]
+  assetClass   AssetClass        @relation(fields: [assetClassId], references: [id])
+  currency     Currency          @relation(fields: [currencyId], references: [id])
   marketQuotes MarketQuote[]
   orders       Order[]
   positions    Position[]
-  prices       InstrumentPrice[]   // <-- Added relation for historical prices
 
   @@index([assetClassId], map: "instruments_asset_class_id_fkey")
   @@index([currencyId], map: "instruments_currency_id_fkey")
@@ -279,16 +278,14 @@ model Instrument {
 }
 
 model InstrumentPrice {
-  id            BigInt      @id @default(autoincrement())
+  id            BigInt     @id @default(autoincrement())
   instrument_id String
-  timestamp     DateTime    @default(now())
-  open_price   Decimal?    @db.Decimal(18, 8)
-  close_price  Decimal?    @db.Decimal(18, 8)
-  volume        Decimal?    @db.Decimal(18, 8)
-  instrument   Instrument   @relation(fields: [instrument_id], references: [id], onDelete: Cascade)
+  timestamp     DateTime   @default(now())
+  open_price    Decimal?   @db.Decimal(18, 8)
+  close_price   Decimal?   @db.Decimal(18, 8)
+  volume        Decimal?   @db.Decimal(18, 8)
+  instrument    Instrument @relation(fields: [instrument_id], references: [id], onDelete: Cascade)
 
   @@unique([instrument_id, timestamp(sort: Desc)], map: "uq_instrument_price_instrument_ts")
-  @@index([instrument_id, timestamp])
   @@map("instrument_prices")
-
 }

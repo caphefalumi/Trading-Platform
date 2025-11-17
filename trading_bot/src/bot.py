@@ -73,7 +73,7 @@ class BTCTradingBot:
         
         # Setup device (GPU if available, otherwise CPU)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print(f"🖥️  Using device: {self.device}")
+        print(f"Using device: {self.device}")
         if torch.cuda.is_available():
             print(f"   GPU: {torch.cuda.get_device_name(0)}")
             print(f"   CUDA Version: {torch.version.cuda}")
@@ -81,7 +81,7 @@ class BTCTradingBot:
         
     def fetch_btc_data_from_db(self):
         """Fetch Bitcoin price data from MySQL database"""
-        print("📊 Fetching Bitcoin data from database...")
+        print("Fetching Bitcoin data from database...")
         try:
             connection = pymysql.connect(**DB_CONFIG)
             cursor = connection.cursor()
@@ -98,7 +98,7 @@ class BTCTradingBot:
             connection.close()
             
             if not rows:
-                print("❌ No data found in database")
+                print("No data found in database")
                 return False
             
             # Convert to DataFrame
@@ -111,13 +111,13 @@ class BTCTradingBot:
             self.data = df[['Close']].copy()
             self.current_price = float(self.data['Close'].iloc[-1])
             
-            print(f"✓ Fetched {len(self.data)} records from database")
-            print(f"📅 Date range: {df.index[0]} to {df.index[-1]}")
-            print(f"📈 Current BTC Price: ${self.current_price:,.2f}")
+            print(f"Fetched {len(self.data)} records from database")
+            print(f"Date range: {df.index[0]} to {df.index[-1]}")
+            print(f"Current BTC Price: ${self.current_price:,.2f}")
             return True
             
         except Exception as e:
-            print(f"❌ Error fetching data from database: {e}")
+            print(f"Error fetching data from database: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -145,7 +145,7 @@ class BTCTradingBot:
         # Save scaler
         with open(self.scaler_path, 'wb') as f:
             pickle.dump(self.scaler, f)
-        print(f"  💾 Model saved to {self.best_model_path}")
+        print(f"Model saved to {self.best_model_path}")
     
     def plot_training_history(self, train_losses, val_losses, best_epoch):
         """Plot training and validation loss"""
@@ -160,12 +160,12 @@ class BTCTradingBot:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.savefig('training_history.png', dpi=150, bbox_inches='tight')
-        print("  📊 Training history saved as 'training_history.png'")
+        print("Training history saved as 'training_history.png'")
         plt.close()
     
     def train_model(self, epochs=200, patience=20):
         """Train the LSTM model with early stopping on GPU/CPU"""
-        print(f"\n🤖 Training LSTM Model (max {epochs} epochs with early stopping)...")
+        print(f"\nTraining LSTM Model (max {epochs} epochs with early stopping)...")
         print(f"   Device: {self.device}")
         
         # Normalize data
@@ -250,11 +250,11 @@ class BTCTradingBot:
             else:
                 self.patience_counter += 1
                 if self.patience_counter >= patience:
-                    print(f"\n⚠️  Early stopping triggered at epoch {epoch+1}")
+                    print(f"\nEarly stopping triggered at epoch {epoch+1}")
                     print(f"  Best model was at epoch {best_epoch} with Val Loss: {self.best_val_loss:.6f}")
                     break
         
-        print(f"\n✓ Model training completed!")
+        print(f"\nModel training completed!")
         print(f"  Best Epoch: {best_epoch}")
         print(f"  Best Validation Loss: {self.best_val_loss:.6f}")
         print(f"  Final Train Loss: {train_losses[-1]:.6f}")
@@ -267,7 +267,7 @@ class BTCTradingBot:
         
     def predict_future(self):
         """Predict future prices using sliding window on GPU/CPU"""
-        print(f"\n🔮 Predicting next {self.prediction_steps} days...")
+        print(f"\nPredicting next {self.prediction_steps} days...")
         
         # Get last sequence
         last_sequence = self.data['Close'].values[-self.seq_length:]
@@ -313,16 +313,16 @@ class BTCTradingBot:
     def display_predictions(self, predictions):
         """Display prediction results with percentage changes"""
         print("\n" + "="*80)
-        print("📊 BITCOIN PRICE PREDICTIONS")
+        print("BITCOIN PRICE PREDICTIONS")
         print("="*80)
-        print(f"\n💰 Current Price: ${self.current_price:,.2f}")
+        print(f"\nCurrent Price: ${self.current_price:,.2f}")
         print(f"\n{'Day':<8} {'Predicted Price':<20} {'Change':<15} {'Signal':<10}")
         print("-" * 80)
         
         changes = self.calculate_percentage_change(predictions)
         
         for i, (pred, change) in enumerate(zip(predictions, changes)):
-            signal = "🟢 BUY" if change > 0 else "🔴 SELL"
+            signal = "BUY" if change > 0 else "SELL"
             sign = "+" if change >= 0 else ""
             print(f"Day {i+1:<4} ${pred:>12,.2f}        {sign}{change:>6.2f}%        {signal}")
         
@@ -332,17 +332,17 @@ class BTCTradingBot:
         avg_change = np.mean(changes)
         final_change = changes[-1]
         
-        print(f"\n📈 SUMMARY:")
+        print(f"\nSUMMARY:")
         print(f"  Average Change: {avg_change:+.2f}%")
         print(f"  Day {self.prediction_steps} Change: {final_change:+.2f}%")
-        print(f"  Trend: {'📈 BULLISH' if final_change > 0 else '📉 BEARISH'}")
+        print(f"  Trend: {'BULLISH' if final_change > 0 else 'BEARISH'}")
         print("="*80)
         
         return changes
     
     def plot_predictions(self, predictions):
         """Plot historical data with future predictions (dotted line)"""
-        print("\n📊 Generating prediction chart...")
+        print("\nGenerating prediction chart...")
         
         # Prepare data
         historical_prices = self.data['Close'].values[-30:]  # Last 30 days
@@ -396,12 +396,12 @@ class BTCTradingBot:
     def run(self):
         """Main execution flow - Training mode"""
         print("\n" + "="*80)
-        print("🤖 BITCOIN TRADING BOT - TRAINING MODE")
+        print("BITCOIN TRADING BOT - TRAINING MODE")
         print("="*80)
         
         # Fetch data from database
         if not self.fetch_btc_data_from_db():
-            print("\n❌ Failed to fetch data from database")
+            print("\nFailed to fetch data from database")
             return
         
         # Train model with early stopping
@@ -412,13 +412,13 @@ class BTCTradingBot:
         self.train_model(epochs=200, patience=20)
         
         print("\n" + "="*80)
-        print("✅ Training Complete!")
+        print("Training Complete!")
         print("="*80)
-        print(f"\n📁 Saved Files:")
+        print(f"\nSaved Files:")
         print(f"  - Best model: {self.best_model_path}")
         print(f"  - Scaler: {self.scaler_path}")
         print(f"  - Training history: training_history.png")
-        print(f"\n💡 Next step: Run 'predict_price.py' to make predictions!")
+        print(f"\nNext step: Run 'predict_price.py' to make predictions!")
         print("="*80)
 
 
@@ -433,8 +433,8 @@ if __name__ == "__main__":
     try:
         bot.run()
     except KeyboardInterrupt:
-        print("\n\n⚠️  Bot stopped by user")
+        print("\n\nBot stopped by user")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         import traceback
         traceback.print_exc()

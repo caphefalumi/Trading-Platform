@@ -96,7 +96,6 @@ CREATE TABLE `sessions` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `sessions_token_key`(`token`),
-    INDEX `sessions_token_idx`(`token`),
     INDEX `sessions_account_id_expires_at_idx`(`account_id`, `expires_at`),
     INDEX `sessions_expires_at_idx`(`expires_at`),
     PRIMARY KEY (`id`)
@@ -264,7 +263,6 @@ CREATE TABLE `instrument_prices` (
     `close_price` DECIMAL(18, 8) NULL,
     `volume` DECIMAL(18, 8) NULL,
 
-    INDEX `instrument_prices_instrument_id_timestamp_idx`(`instrument_id`, `timestamp`),
     UNIQUE INDEX `uq_instrument_price_instrument_ts`(`instrument_id`, `timestamp` DESC),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

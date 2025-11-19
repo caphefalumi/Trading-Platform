@@ -42,7 +42,7 @@ function executeLSTMPrediction() {
       console.log('Python process exited with code:', code)
       console.log('Output data length:', outputData.length)
       console.log('Error data length:', errorData.length)
-      
+
       if (code !== 0) {
         console.error('Python LSTM prediction error:', errorData)
         console.error('Python stdout was:', outputData)
@@ -74,7 +74,7 @@ function executeLSTMPrediction() {
 /**
  * GET /api/predictions/:instrumentId
  * Get LSTM price predictions for Bitcoin
- * Currently only supports BTC-USD (instrument_id: 730ecbc1-c10d-11f0-930e-a68413f72443)
+ * Currently only supports BTCUSDT
  */
 export const getPredictions = async (req, res) => {
   try {
@@ -92,13 +92,15 @@ export const getPredictions = async (req, res) => {
       })
     }
 
-    // Check if this is Bitcoin
-    const BTC_INSTRUMENT_ID = '730ecbc1-c10d-11f0-930e-a68413f72443'
-    if (instrumentId !== BTC_INSTRUMENT_ID) {
+    // Check if this is Bitcoin - support both BTCUSDT and BTC-USD symbols
+    const isBTC = instrument.symbol === 'BTCUSDT' || instrument.symbol === 'BTC-USD' || instrument.symbol === 'BTCUSD'
+
+    if (!isBTC) {
       return res.status(400).json({
         success: false,
-        error: 'LSTM predictions currently only available for BTC-USD',
-        message: 'This prediction model is trained specifically for Bitcoin. Other instruments are not yet supported.'
+        error: 'LSTM predictions currently only available for Bitcoin',
+        message: 'This prediction model is trained specifically for Bitcoin. Other instruments are not yet supported.',
+        supportedSymbols: ['BTCUSDT', 'BTC-USD', 'BTCUSD']
       })
     }
 
@@ -129,7 +131,7 @@ export const getPredictions = async (req, res) => {
 /**
  * POST /api/predictions/batch
  * Get predictions for multiple instruments
- * Note: Currently only BTC-USD is supported by the LSTM model
+ * Note: Currently only Bitcoin is supported by the LSTM model
  */
 export const getBatchPredictions = async (req, res) => {
   try {
@@ -142,8 +144,6 @@ export const getBatchPredictions = async (req, res) => {
       })
     }
 
-    const BTC_INSTRUMENT_ID = '730ecbc1-c10d-11f0-930e-a68413f72443'
-
     // Get all instruments
     const instruments = await prisma.instrument.findMany({
       where: {
@@ -155,7 +155,10 @@ export const getBatchPredictions = async (req, res) => {
 
     // Process each instrument
     for (const instrument of instruments) {
-      if (instrument.id === BTC_INSTRUMENT_ID) {
+      // Check if this is Bitcoin
+      const isBTC = instrument.symbol === 'BTCUSDT' || instrument.symbol === 'BTC-USD' || instrument.symbol === 'BTCUSD'
+
+      if (isBTC) {
         // Use LSTM prediction for Bitcoin
         try {
           const predictions = await executeLSTMPrediction()
@@ -178,7 +181,8 @@ export const getBatchPredictions = async (req, res) => {
           instrumentId: instrument.id,
           symbol: instrument.symbol,
           success: false,
-          error: 'LSTM predictions only available for BTC-USD'
+          error: 'LSTM predictions only available for Bitcoin',
+          supportedSymbols: ['BTCUSDT', 'BTC-USD', 'BTCUSD']
         })
       }
     }

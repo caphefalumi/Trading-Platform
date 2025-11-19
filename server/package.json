@@ -10,7 +10,8 @@
     "preview": "bun app.js",
     "seed": "node seed.js",
     "seed:bun": "bun seed.js",
-    "seed:verify": "node verify_seed.js"
+    "seed:verify": "node verify_seed.js",
+    "instruments": "node get_instrument_ids.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

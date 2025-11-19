@@ -107,7 +107,7 @@ class BTCPricePredictor:
             cursor.execute(f"""
                 SELECT timestamp, close_price 
                 FROM instrument_prices 
-                WHERE instrument_id = '730ecbc1-c10d-11f0-930e-a68413f72443'
+                WHERE instrument_id = '8211e04d-ace8-4e12-8338-dfdf16b6c8e0'
                 ORDER BY timestamp DESC
                 LIMIT {self.seq_length + 10}
             """)
@@ -185,7 +185,7 @@ class BTCPricePredictor:
             
             # Determine signal
             signal = "BUY" if change_vs_yesterday > 0 else "SELL"
-            confidence = min(abs(change_vs_yesterday) / 2, 100)  # Simple confidence metric
+            confidence = 100 - min(abs(change_vs_yesterday) / 2, 100)  # Simple confidence metric
             
             predictions_data.append({
                 'day': i + 1,

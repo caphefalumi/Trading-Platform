@@ -145,7 +145,7 @@ export default {
     const predictionChart = ref(null)
     let chartInstance = null
 
-    const BTC_INSTRUMENT_ID = '730ecbc1-c10d-11f0-930e-a68413f72443'
+    const BTC_INSTRUMENT_ID = '8211e04d-ace8-4e12-8338-dfdf16b6c8e0'
 
     const loadPredictions = async () => {
       loading.value = true

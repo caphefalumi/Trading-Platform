@@ -4,7 +4,7 @@
       <span class="title">🤖 AI Predictions</span>
       <span class="subtitle">LSTM Model</span>
     </div>
-    
+
     <div v-if="loading" class="loading-state">
       <div class="mini-spinner"></div>
       <span>Loading...</span>
@@ -66,7 +66,7 @@ export default {
     const loading = ref(false)
     const error = ref(null)
 
-    const BTC_INSTRUMENT_ID = '730ecbc1-c10d-11f0-930e-a68413f72443'
+    const BTC_INSTRUMENT_ID = '8211e04d-ace8-4e12-8338-dfdf16b6c8e0'
 
     const loadPrediction = async () => {
       loading.value = true

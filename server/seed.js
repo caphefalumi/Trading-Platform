@@ -13,12 +13,12 @@ const prisma = new PrismaClient();
 
 // Configuration - Adjust these numbers to scale data generation
 const CONFIG = {
-  ACCOUNTS: 1000,
+  ACCOUNTS: 10000,
   ORDERS_PER_ACCOUNT: 2,
-  POSITIONS_PERCENTAGE: 0.5, // 50% of accounts will have positions
+  POSITIONS_PERCENTAGE: 0.6, // 60% of accounts will have positions
   TRANSACTIONS_PER_ACCOUNT: 1.5,
-  MARKET_QUOTES_PER_INSTRUMENT: 1000,
-  INSTRUMENT_PRICES_PER_INSTRUMENT: 1000,
+  MARKET_QUOTES_PER_INSTRUMENT: 2000,
+  INSTRUMENT_PRICES_PER_INSTRUMENT: 2000,
   HISTORICAL_DAYS: 365,
 };
 
@@ -305,10 +305,20 @@ async function seedAccounts() {
   const accounts = [];
   const hashedPassword = await bcrypt.hash('password123', 10);
 
+  // Crypto-themed usernames
+  const cryptoTerms = ['hodl', 'moon', 'whale', 'bull', 'bear', 'degen', 'ape', 'diamond', 'rocket', 'lambo', 'satoshi', 'vitalik', 'crypto', 'defi', 'nft', 'web3', 'btc', 'eth', 'trader', 'investor'];
+
   for (let i = 0; i < CONFIG.ACCOUNTS; i++) {
+    // Generate GUARANTEED unique crypto-themed email using faker username + crypto term + timestamp
+    const username = faker.internet.username().toLowerCase();
+    const cryptoTerm = faker.helpers.arrayElement(cryptoTerms);
+    const timestamp = Date.now();
+    const randomSuffix = faker.string.alphanumeric(4);
+    const email = `${username}_${cryptoTerm}_${randomSuffix}@tradingplatform.com`;
+
     const account = await prisma.account.create({
       data: {
-        email: faker.internet.email().toLowerCase(),
+        email: email.toLowerCase(),
         password: hashedPassword,
         baseCurrencyId: currencyIds.USDT,
         createdAt: faker.date.past({ years: 2 }),

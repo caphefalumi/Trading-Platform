@@ -11,7 +11,8 @@
     "seed": "node seed.js",
     "seed:bun": "bun seed.js",
     "seed:verify": "node verify_seed.js",
-    "instruments": "node get_instrument_ids.js"
+    "instruments": "node get_instrument_ids.js",
+    "benchmark:index": "node scripts/index_benchmark.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

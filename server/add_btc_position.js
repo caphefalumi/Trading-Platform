@@ -2,8 +2,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function addBTCPosition() {
-  const accountId = '7ba1e55a-b322-41d3-8665-b7f1fa331b94';
-  const instrumentId = '8211e04d-ace8-4e12-8338-dfdf16b6c8e0'; // BTCUSDT
+  const accountId = '278f9b53-5613-495e-8d04-652001d633d6';
+  const instrumentId = '2376ac2b-fe9f-41ad-bb47-deb6d30d3253'; // BTCUSDT
   const quantity = 100; // 100 BTC worth of BTCUSDT
   const averagePrice = 100000; // Assume average purchase price of $100,000
 

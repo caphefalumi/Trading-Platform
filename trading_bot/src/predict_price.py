@@ -116,7 +116,7 @@ class BTCPricePredictor:
             cursor.execute(f"""
                 SELECT timestamp, close_price 
                 FROM instrument_prices 
-                WHERE instrument_id = '8211e04d-ace8-4e12-8338-dfdf16b6c8e0'
+                WHERE instrument_id = '2376ac2b-fe9f-41ad-bb47-deb6d30d3253'
                 ORDER BY timestamp DESC
                 LIMIT {self.seq_length + 10}
             """)

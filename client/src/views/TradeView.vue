@@ -111,13 +111,12 @@
               <!-- Prediction Button -->
               <v-btn
                 v-if="form.instrumentId"
-                @click="showPredictions"
+                :to="{ name: 'predictions' }"
                 color="primary"
                 variant="outlined"
                 block
                 size="large"
                 class="mt-2"
-                :loading="loadingPredictions"
               >
                 <v-icon left class="mr-2">mdi-chart-line</v-icon>
                 View Price Predictions

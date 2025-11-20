@@ -1,9 +1,4 @@
-/**
- * =============================================
- * Trading Platform Data Seeder
- * Uses Prisma and Faker to generate realistic mock data
- * =============================================
- */
+
 
 import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
@@ -11,18 +6,18 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// Configuration - Adjust these numbers to scale data generation
+
 const CONFIG = {
   ACCOUNTS: 10000,
   ORDERS_PER_ACCOUNT: 2,
-  POSITIONS_PERCENTAGE: 0.6, // 60% of accounts will have positions
+  POSITIONS_PERCENTAGE: 0.6,
   TRANSACTIONS_PER_ACCOUNT: 1.5,
   MARKET_QUOTES_PER_INSTRUMENT: 2000,
   INSTRUMENT_PRICES_PER_INSTRUMENT: 2000,
   HISTORICAL_DAYS: 365,
 };
 
-// Reference data IDs (will be set after creation)
+
 let currencyIds = {};
 let assetClassIds = {};
 let instrumentIds = {};
@@ -34,36 +29,26 @@ let transactionTypeIds = {};
 let transactionStatusIds = {};
 let ledgerEntryTypeIds = {};
 
-/**
- * Generate realistic price for VOC token (similar to VND - Vietnamese Dong)
- * VND typically ranges from 20,000 to 25,000 per USD
- * VOC will be valued similarly: 0.00004 to 0.00005 USDT (1/25000 to 1/20000)
- */
+
 function generateVOCPrice() {
   return faker.number.float({ min: 0.00004, max: 0.00005, fractionDigits: 8 });
 }
 
-/**
- * Generate realistic BTC price (around $30,000 - $70,000)
- */
+
 function generateBTCPrice() {
   return faker.number.float({ min: 30000, max: 70000, fractionDigits: 2 });
 }
 
-/**
- * Generate realistic ETH price (around $1,500 - $4,000)
- */
+
 function generateETHPrice() {
   return faker.number.float({ min: 1500, max: 4000, fractionDigits: 2 });
 }
 
-/**
- * Clear existing data
- */
-async function clearDatabase() {
-  console.log('🗑️  Clearing existing data...');
 
-  // Delete in reverse order of dependencies
+async function clearDatabase() {
+  console.log('Clearing existing data...');
+
+
   await prisma.execution.deleteMany();
   await prisma.order.deleteMany();
   await prisma.position.deleteMany();
@@ -78,7 +63,7 @@ async function clearDatabase() {
   await prisma.currency.deleteMany();
   await prisma.assetClass.deleteMany();
 
-  // Delete reference data
+
   await prisma.orderSide.deleteMany();
   await prisma.orderStatus.deleteMany();
   await prisma.orderType.deleteMany();
@@ -87,16 +72,15 @@ async function clearDatabase() {
   await prisma.transactionStatus.deleteMany();
   await prisma.ledgerEntryType.deleteMany();
 
-  console.log('✅ Database cleared');
+
+  console.log('Database cleared');
 }
 
-/**
- * Seed reference data (currencies, asset classes, order types, etc.)
- */
-async function seedReferenceData() {
-  console.log('📚 Seeding reference data...');
 
-  // 1. Currencies
+async function seedReferenceData() {
+  console.log('Seeding reference data...');
+
+
   const currencies = await Promise.all([
     prisma.currency.create({
       data: { code: 'USDT', name: 'Tether USD', symbol: '₮' }
@@ -119,7 +103,7 @@ async function seedReferenceData() {
     VOC: currencies[3].id,
   };
 
-  // 2. Asset Classes
+
   const assetClasses = await Promise.all([
     prisma.assetClass.create({
       data: { name: 'Cryptocurrency', description: 'Digital or virtual currency' }
@@ -138,7 +122,7 @@ async function seedReferenceData() {
     Commodity: assetClasses[2].id,
   };
 
-  // 3. Order Sides
+
   const orderSides = await Promise.all([
     prisma.orderSide.create({ data: { code: 'BUY', description: 'Buy order' } }),
     prisma.orderSide.create({ data: { code: 'SELL', description: 'Sell order' } }),
@@ -149,7 +133,7 @@ async function seedReferenceData() {
     SELL: orderSides[1].id,
   };
 
-  // 4. Order Statuses
+
   const orderStatuses = await Promise.all([
     prisma.orderStatus.create({ data: { code: 'PENDING', description: 'Order pending' } }),
     prisma.orderStatus.create({ data: { code: 'OPEN', description: 'Order open' } }),
@@ -168,7 +152,7 @@ async function seedReferenceData() {
     REJECTED: orderStatuses[5].id,
   };
 
-  // 5. Order Types
+
   const orderTypes = await Promise.all([
     prisma.orderType.create({ data: { code: 'MARKET', description: 'Market order' } }),
     prisma.orderType.create({ data: { code: 'LIMIT', description: 'Limit order' } }),
@@ -183,7 +167,7 @@ async function seedReferenceData() {
     STOP_LIMIT: orderTypes[3].id,
   };
 
-  // 6. Time In Force Types
+
   const timeInForceTypes = await Promise.all([
     prisma.timeInForceType.create({ data: { code: 'GTC', description: 'Good Till Cancelled' } }),
     prisma.timeInForceType.create({ data: { code: 'IOC', description: 'Immediate or Cancel' } }),
@@ -198,7 +182,7 @@ async function seedReferenceData() {
     DAY: timeInForceTypes[3].id,
   };
 
-  // 7. Transaction Types
+
   const transactionTypes = await Promise.all([
     prisma.transactionType.create({ data: { code: 'DEPOSIT', description: 'Deposit funds', category: 'CREDIT' } }),
     prisma.transactionType.create({ data: { code: 'WITHDRAWAL', description: 'Withdraw funds', category: 'DEBIT' } }),
@@ -213,7 +197,7 @@ async function seedReferenceData() {
     FEE: transactionTypes[3].id,
   };
 
-  // 8. Transaction Statuses
+
   const transactionStatuses = await Promise.all([
     prisma.transactionStatus.create({ data: { code: 'PENDING', description: 'Transaction pending' } }),
     prisma.transactionStatus.create({ data: { code: 'COMPLETED', description: 'Transaction completed' } }),
@@ -228,7 +212,7 @@ async function seedReferenceData() {
     CANCELLED: transactionStatuses[3].id,
   };
 
-  // 9. Ledger Entry Types
+
   const ledgerEntryTypes = await Promise.all([
     prisma.ledgerEntryType.create({ data: { code: 'DEPOSIT', description: 'Deposit entry', category: 'CREDIT' } }),
     prisma.ledgerEntryType.create({ data: { code: 'WITHDRAWAL', description: 'Withdrawal entry', category: 'DEBIT' } }),
@@ -245,14 +229,13 @@ async function seedReferenceData() {
     FEE: ledgerEntryTypes[4].id,
   };
 
-  console.log('✅ Reference data seeded');
+
+  console.log('Reference data seeded');
 }
 
-/**
- * Seed instruments (BTC, ETH, VOC trading pairs)
- */
+
 async function seedInstruments() {
-  console.log('📊 Seeding instruments...');
+  console.log('Seeding instruments...');
 
   const instruments = await Promise.all([
     prisma.instrument.create({
@@ -293,26 +276,23 @@ async function seedInstruments() {
     VOCUSDT: instruments[2].id,
   };
 
-  console.log('✅ Instruments seeded');
+  console.log('Instruments seeded');
 }
 
-/**
- * Seed accounts with realistic data
- */
+
 async function seedAccounts() {
-  console.log('👥 Seeding accounts...');
+  console.log('Seeding accounts...');
 
   const accounts = [];
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // Crypto-themed usernames
+
   const cryptoTerms = ['hodl', 'moon', 'whale', 'bull', 'bear', 'degen', 'ape', 'diamond', 'rocket', 'lambo', 'satoshi', 'vitalik', 'crypto', 'defi', 'nft', 'web3', 'btc', 'eth', 'trader', 'investor'];
 
   for (let i = 0; i < CONFIG.ACCOUNTS; i++) {
-    // Generate GUARANTEED unique crypto-themed email using faker username + crypto term + timestamp
+
     const username = faker.internet.username().toLowerCase();
     const cryptoTerm = faker.helpers.arrayElement(cryptoTerms);
-    const timestamp = Date.now();
     const randomSuffix = faker.string.alphanumeric(4);
     const email = `${username}_${cryptoTerm}_${randomSuffix}@tradingplatform.com`;
 
@@ -326,80 +306,74 @@ async function seedAccounts() {
     });
     accounts.push(account);
 
-    if ((i + 1) % 100 === 0) {
-      console.log(`   Created ${i + 1}/${CONFIG.ACCOUNTS} accounts`);
-    }
+
   }
 
-  console.log(`✅ ${accounts.length} accounts seeded`);
+
+  console.log(`${accounts.length} accounts seeded`);
   return accounts;
 }
 
-/**
- * Seed account balances
- */
+
 async function seedAccountBalances(accounts) {
-  console.log('💰 Seeding account balances...');
+  console.log('Seeding account balances...');
 
   let count = 0;
 
   for (const account of accounts) {
     const balances = [];
 
-    // Every account gets USDT balance
+
     balances.push({
       accountId: account.id,
       currencyId: currencyIds.USDT,
       available: parseFloat(faker.number.float({ min: 1000, max: 100000, fractionDigits: 2 })),
-      reserved: parseFloat(faker.number.float({ min: 0, max: 1000, fractionDigits: 2 })),
+      reserved: 0,
     });
 
-    // 70% of accounts get BTC balance
+
     if (faker.number.float() > 0.3) {
       balances.push({
         accountId: account.id,
         currencyId: currencyIds.BTC,
         available: parseFloat(faker.number.float({ min: 0.01, max: 10, fractionDigits: 8 })),
-        reserved: parseFloat(faker.number.float({ min: 0, max: 0.5, fractionDigits: 8 })),
+        reserved: 0,
       });
     }
 
-    // 60% of accounts get ETH balance
+
     if (faker.number.float() > 0.4) {
       balances.push({
         accountId: account.id,
         currencyId: currencyIds.ETH,
         available: parseFloat(faker.number.float({ min: 0.1, max: 100, fractionDigits: 8 })),
-        reserved: parseFloat(faker.number.float({ min: 0, max: 5, fractionDigits: 8 })),
+        reserved: 0,
       });
     }
 
-    // 50% of accounts get VOC balance
+
     if (faker.number.float() > 0.5) {
       balances.push({
         accountId: account.id,
         currencyId: currencyIds.VOC,
         available: parseFloat(faker.number.float({ min: 10000, max: 10000000, fractionDigits: 2 })),
-        reserved: parseFloat(faker.number.float({ min: 0, max: 100000, fractionDigits: 2 })),
+        reserved: 0,
       });
     }
 
     await prisma.accountBalance.createMany({ data: balances });
     count += balances.length;
 
-    if ((accounts.indexOf(account) + 1) % 100 === 0) {
-      console.log(`   Created balances for ${accounts.indexOf(account) + 1}/${accounts.length} accounts`);
-    }
+
   }
 
-  console.log(`✅ ${count} account balances seeded`);
+
+  console.log(`${count} account balances seeded`);
 }
 
-/**
- * Seed orders
- */
+
 async function seedOrders(accounts) {
-  console.log('📝 Seeding orders...');
+  console.log('Seeding orders...');
 
   const orders = [];
   const instrumentList = [
@@ -452,7 +426,7 @@ async function seedOrders(accounts) {
     }
   }
 
-  // Batch insert orders
+
   const BATCH_SIZE = 500;
   for (let i = 0; i < orders.length; i += BATCH_SIZE) {
     const batch = orders.slice(i, i + BATCH_SIZE);
@@ -460,17 +434,16 @@ async function seedOrders(accounts) {
     console.log(`   Inserted ${Math.min(i + BATCH_SIZE, orders.length)}/${orders.length} orders`);
   }
 
-  console.log(`✅ ${orders.length} orders seeded`);
+
+  console.log(`${orders.length} orders seeded`);
   return orders;
 }
 
-/**
- * Seed executions for filled orders
- */
-async function seedExecutions() {
-  console.log('⚡ Seeding executions...');
 
-  // Get all filled or partially filled orders
+async function seedExecutions() {
+  console.log(' Seeding executions...');
+
+
   const filledOrders = await prisma.order.findMany({
     where: {
       statusId: {
@@ -498,7 +471,7 @@ async function seedExecutions() {
     liquidity: faker.helpers.arrayElement(['MAKER', 'TAKER']),
   }));
 
-  // Batch insert executions
+
   const BATCH_SIZE = 500;
   for (let i = 0; i < executions.length; i += BATCH_SIZE) {
     const batch = executions.slice(i, i + BATCH_SIZE);
@@ -506,14 +479,13 @@ async function seedExecutions() {
     console.log(`   Inserted ${Math.min(i + BATCH_SIZE, executions.length)}/${executions.length} executions`);
   }
 
-  console.log(`✅ ${executions.length} executions seeded`);
+
+  console.log(`${executions.length} executions seeded`);
 }
 
-/**
- * Seed positions
- */
+
 async function seedPositions(accounts) {
-  console.log('📈 Seeding positions...');
+  console.log('Seeding positions...');
 
   const positions = [];
   const numAccountsWithPositions = Math.floor(accounts.length * CONFIG.POSITIONS_PERCENTAGE);
@@ -541,14 +513,12 @@ async function seedPositions(accounts) {
   }
 
   await prisma.position.createMany({ data: positions });
-  console.log(`✅ ${positions.length} positions seeded`);
+  console.log(`${positions.length} positions seeded`);
 }
 
-/**
- * Seed transactions
- */
+
 async function seedTransactions(accounts) {
-  console.log('💸 Seeding transactions...');
+  console.log('Seeding transactions...');
 
   const transactions = [];
 
@@ -593,7 +563,7 @@ async function seedTransactions(accounts) {
     }
   }
 
-  // Batch insert transactions
+
   const BATCH_SIZE = 500;
   for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
     const batch = transactions.slice(i, i + BATCH_SIZE);
@@ -601,14 +571,13 @@ async function seedTransactions(accounts) {
     console.log(`   Inserted ${Math.min(i + BATCH_SIZE, transactions.length)}/${transactions.length} transactions`);
   }
 
-  console.log(`✅ ${transactions.length} transactions seeded`);
+
+  console.log(`${transactions.length} transactions seeded`);
 }
 
-/**
- * Seed ledger entries
- */
+
 async function seedLedgerEntries(accounts) {
-  console.log('📒 Seeding ledger entries...');
+  console.log('Seeding ledger entries...');
 
   const ledgerEntries = [];
 
@@ -639,7 +608,7 @@ async function seedLedgerEntries(accounts) {
     }
   }
 
-  // Batch insert ledger entries
+
   const BATCH_SIZE = 500;
   for (let i = 0; i < ledgerEntries.length; i += BATCH_SIZE) {
     const batch = ledgerEntries.slice(i, i + BATCH_SIZE);
@@ -647,14 +616,13 @@ async function seedLedgerEntries(accounts) {
     console.log(`   Inserted ${Math.min(i + BATCH_SIZE, ledgerEntries.length)}/${ledgerEntries.length} ledger entries`);
   }
 
-  console.log(`✅ ${ledgerEntries.length} ledger entries seeded`);
+
+  console.log(`${ledgerEntries.length} ledger entries seeded`);
 }
 
-/**
- * Seed market quotes (historical price data)
- */
+
 async function seedMarketQuotes() {
-  console.log('📉 Seeding market quotes...');
+  console.log('Seeding market quotes...');
 
   const quotes = [];
   const instruments = [
@@ -667,11 +635,11 @@ async function seedMarketQuotes() {
     let lastPrice = instrument.priceGen();
 
     for (let i = 0; i < CONFIG.MARKET_QUOTES_PER_INSTRUMENT; i++) {
-      // Create realistic price movement (random walk with mean reversion)
+
       const change = (Math.random() - 0.5) * instrument.volatility * lastPrice;
       lastPrice = lastPrice + change;
 
-      const spread = lastPrice * 0.001; // 0.1% spread
+  const spread = lastPrice * 0.001;
       const bidPrice = lastPrice - spread / 2;
       const askPrice = lastPrice + spread / 2;
 
@@ -688,7 +656,7 @@ async function seedMarketQuotes() {
     console.log(`   Created ${CONFIG.MARKET_QUOTES_PER_INSTRUMENT} quotes for instrument`);
   }
 
-  // Batch insert quotes
+
   const BATCH_SIZE = 500;
   for (let i = 0; i < quotes.length; i += BATCH_SIZE) {
     const batch = quotes.slice(i, i + BATCH_SIZE);
@@ -696,14 +664,13 @@ async function seedMarketQuotes() {
     console.log(`   Inserted ${Math.min(i + BATCH_SIZE, quotes.length)}/${quotes.length} market quotes`);
   }
 
-  console.log(`✅ ${quotes.length} market quotes seeded`);
+
+  console.log(`${quotes.length} market quotes seeded`);
 }
 
-/**
- * Seed instrument prices (OHLC data)
- */
+
 async function seedInstrumentPrices() {
-  console.log('📊 Seeding instrument prices (OHLC)...');
+  console.log('Seeding instrument prices (OHLC)...');
 
   const prices = [];
   const instruments = [
@@ -718,7 +685,7 @@ async function seedInstrumentPrices() {
     for (let i = 0; i < CONFIG.INSTRUMENT_PRICES_PER_INSTRUMENT; i++) {
       const openPrice = currentPrice;
 
-      // Generate intra-period price movement
+
       const highChange = Math.abs((Math.random() * instrument.volatility * currentPrice));
       const lowChange = Math.abs((Math.random() * instrument.volatility * currentPrice));
       const closeChange = (Math.random() - 0.5) * instrument.volatility * currentPrice;
@@ -738,7 +705,7 @@ async function seedInstrumentPrices() {
     console.log(`   Created ${CONFIG.INSTRUMENT_PRICES_PER_INSTRUMENT} OHLC candles for instrument`);
   }
 
-  // Batch insert prices
+
   const BATCH_SIZE = 500;
   for (let i = 0; i < prices.length; i += BATCH_SIZE) {
     const batch = prices.slice(i, i + BATCH_SIZE);
@@ -746,14 +713,14 @@ async function seedInstrumentPrices() {
     console.log(`   Inserted ${Math.min(i + BATCH_SIZE, prices.length)}/${prices.length} instrument prices`);
   }
 
-  console.log(`✅ ${prices.length} instrument prices seeded`);
+
+  console.log(`${prices.length} instrument prices seeded`);
 }
 
-/**
- * Print summary statistics
- */
+
 async function printSummary() {
-  console.log('\n📊 DATABASE SUMMARY');
+
+  console.log('\nDATABASE SUMMARY');
   console.log('='.repeat(50));
 
   const counts = await Promise.all([
@@ -777,15 +744,14 @@ async function printSummary() {
   console.log(`Ledger Entries:     ${counts[6].toLocaleString()}`);
   console.log(`Market Quotes:      ${counts[7].toLocaleString()}`);
   console.log(`Instrument Prices:  ${counts[8].toLocaleString()}`);
+
   console.log('='.repeat(50));
 }
 
-/**
- * Main seeding function
- */
+
 async function main() {
   try {
-    console.log('🚀 Starting database seeding...\n');
+    console.log('Starting database seeding...\n');
     const startTime = Date.now();
 
     await clearDatabase();
@@ -805,9 +771,9 @@ async function main() {
     await printSummary();
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`\n✅ Database seeding completed in ${duration}s\n`);
+    console.log(`\nDatabase seeding completed in ${duration}s\n`);
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('Error seeding database:', error);
     throw error;
   } finally {
     await prisma.$disconnect();

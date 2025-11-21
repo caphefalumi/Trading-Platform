@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function addBTCBalance() {
-  const accountId = '7ba1e55a-b322-41d3-8665-b7f1fa331b94';
+  const accountId = '278f9b53-5613-495e-8d04-652001d633d6';
   const amount = 100; // 100 BTC
 
   try {

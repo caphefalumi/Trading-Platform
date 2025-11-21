@@ -66,7 +66,7 @@ export default {
     const loading = ref(false)
     const error = ref(null)
 
-    const BTC_INSTRUMENT_ID = '8211e04d-ace8-4e12-8338-dfdf16b6c8e0'
+    const BTC_INSTRUMENT_ID = '2376ac2b-fe9f-41ad-bb47-deb6d30d3253'
 
     const loadPrediction = async () => {
       loading.value = true

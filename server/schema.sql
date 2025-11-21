@@ -121,10 +121,7 @@ CREATE TABLE `orders` (
     UNIQUE INDEX `orders_client_order_id_key`(`client_order_id`),
     INDEX `orders_instrument_id_side_id_status_id_created_at_idx`(`instrument_id`, `side_id`, `status_id`, `created_at`),
     INDEX `orders_account_id_status_id_idx`(`account_id`, `status_id`),
-    INDEX `orders_side_id_fkey`(`side_id`),
-    INDEX `orders_status_id_fkey`(`status_id`),
-    INDEX `orders_time_in_force_id_fkey`(`time_in_force_id`),
-    INDEX `orders_type_id_fkey`(`type_id`),
+    INDEX `orders_account_id_created_at_idx`(`account_id`, `created_at` DESC),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -152,6 +149,7 @@ CREATE TABLE `positions` (
     `updated_at` DATETIME(3) NOT NULL,
 
     INDEX `positions_instrument_id_fkey`(`instrument_id`),
+    INDEX `positions_instrument_id_quantity_idx`(`instrument_id`, `quantity` DESC),
     UNIQUE INDEX `positions_account_instrument_unique`(`account_id`, `instrument_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -179,6 +177,7 @@ CREATE TABLE `ledger_entries` (
 
     INDEX `ledger_entries_account_id_created_at_idx`(`account_id`, `created_at`),
     INDEX `ledger_entries_entry_type_id_fkey`(`entry_type_id`),
+    INDEX `ledger_entries_reference_id_idx`(`reference_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -234,6 +233,7 @@ CREATE TABLE `transactions` (
     INDEX `transactions_currency_id_fkey`(`currency_id`),
     INDEX `transactions_status_id_fkey`(`status_id`),
     INDEX `transactions_tx_type_id_fkey`(`tx_type_id`),
+    INDEX `transactions_amount_idx`(`amount`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -251,6 +251,7 @@ CREATE TABLE `instruments` (
     UNIQUE INDEX `instruments_symbol_key`(`symbol`),
     INDEX `instruments_asset_class_id_fkey`(`asset_class_id`),
     INDEX `instruments_currency_id_fkey`(`currency_id`),
+    INDEX `instruments_name_idx`(`name`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

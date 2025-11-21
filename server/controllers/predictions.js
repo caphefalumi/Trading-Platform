@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Python executable path - update this if needed
-const PYTHON_PATH = process.env.PYTHON_PATH || 'C:\\Users\\Toan\\AppData\\Local\\Programs\\Python\\Python311\\python.exe'
+const PYTHON_PATH = process.env.PYTHON_PATH || 'C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe'
 
 /**
  * Execute Python LSTM prediction script
